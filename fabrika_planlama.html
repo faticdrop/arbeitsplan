@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fabrik Arbeitsplanung</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1117;--surf:#1a1d27;--surf2:#22263a;--surf3:#2a2f47;--bord:#2e3250;--accent:#4f8ef7;--green:#38d9a9;--warn:#f7a84f;--danger:#f75f5f;--kk:#38d9a9;--acil:#f7a84f;--text:#e8eaf6;--muted:#7880a8;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:13px}
+button{cursor:pointer;font-family:var(--sans)}
+input,select{font-family:var(--sans)}
+
+/* TOPBAR */
+.topbar{background:var(--surf);border-bottom:1px solid var(--bord);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200}
+.logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.06em}
+.logo span{color:var(--muted);font-weight:400}
+.stats-row{display:flex;gap:20px}
+.stat-box{text-align:center}
+.stat-num{font-family:var(--mono);font-size:17px;font-weight:600}
+.stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+
+/* NAV TABS */
+.navtabs{display:flex;background:var(--surf);border-bottom:1px solid var(--bord);padding:0 1.5rem;gap:2px}
+.ntab{padding:11px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none}
+.ntab:hover{color:var(--text)}
+.ntab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* CONTENT */
+.content{padding:1.25rem 1.5rem}
+.panel{display:none}.panel.active{display:block}
+
+/* CARDS */
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:1.1rem 1.25rem;margin-bottom:1rem}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.card-title{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%}
+.d-red{background:var(--danger)}.d-warn{background:var(--warn)}.d-green{background:var(--green)}.d-blue{background:var(--accent)}.d-acil{background:var(--acil)}
+
+/* INPUTS */
+.inp{background:var(--surf2);border:1px solid var(--bord);border-radius:6px;padding:7px 11px;color:var(--text);font-size:13px;outline:none;transition:border .15s}
+.inp:focus{border-color:var(--accent)}
+.inp-sm{padding:4px 8px;font-size:12px}
+.inp-w{width:100%}
+
+/* BUTTONS */
+.btn{border:1px solid var(--bord);border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;background:var(--surf2);color:var(--text);transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#3a7de8;border-color:#3a7de8;color:#fff}
+.btn-danger{background:transparent;color:var(--danger);border-color:var(--danger)}
+.btn-danger:hover{background:rgba(247,95,95,.1)}
+.btn-success{background:transparent;color:var(--green);border-color:var(--green)}
+.btn-success:hover{background:rgba(56,217,169,.1)}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:4px}
+.btn-icon{background:none;border:none;padding:3px 6px;color:var(--muted);font-size:14px;border-radius:4px}
+.btn-icon:hover{color:var(--danger);background:rgba(247,95,95,.1)}
+
+/* PLAN BUTTON */
+.plan-btn-wrap{text-align:center;padding:1.5rem 0}
+.plan-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:13px 48px;font-size:15px;font-weight:600;letter-spacing:.03em;transition:all .15s}
+.plan-btn:hover{background:#3a7de8;transform:translateY(-1px)}
+
+/* WORKER SCROLL LIST */
+.wscroll{max-height:300px;overflow-y:auto;border:1px solid var(--bord);border-radius:6px}
+.wrow{display:flex;align-items:center;padding:6px 11px;border-bottom:1px solid rgba(46,50,80,.6);gap:8px;transition:background .1s}
+.wrow:last-child{border-bottom:none}
+.wrow:hover{background:var(--surf2)}
+.wrow.sel-h{background:rgba(247,95,95,.12)}
+.wrow.sel-i{background:rgba(247,168,79,.12)}
+.chk{width:15px;height:15px;border-radius:3px;border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .15s}
+.chk.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.wid{font-family:var(--mono);font-size:10px;color:var(--muted);width:26px;flex-shrink:0}
+.wname{flex:1;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;min-height:28px}
+.chip{background:var(--surf2);border:1px solid var(--bord);border-radius:4px;padding:2px 6px 2px 9px;font-size:11px;display:flex;align-items:center;gap:5px}
+.chip-h{border-color:var(--danger)}.chip-i{border-color:var(--warn)}
+.chip-x{color:var(--muted);font-size:13px;line-height:1;cursor:pointer}.chip-x:hover{color:var(--danger)}
+
+/* DEVAMSIZLIK GRID */
+.dev-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+
+/* TUR PLAN */
+.tur-tabs{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.ttab{padding:7px 16px;border-radius:6px;border:1px solid var(--bord);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;background:var(--surf);color:var(--muted)}
+.ttab:hover{border-color:var(--accent);color:var(--text)}
+.ttab.active{color:#fff;border-color:transparent}
+.t1.active{background:#1565C0}.t2.active{background:#2E7D32}.t3.active{background:#E65100}.t4.active{background:#6A1B9A}
+
+.ptable-wrap{border:1px solid var(--bord);border-radius:8px;overflow:hidden;overflow-x:auto}
+.ptable{width:100%;border-collapse:collapse;font-size:12px}
+.ptable th{background:var(--surf2);padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bord);font-family:var(--mono)}
+.ptable td{padding:6px 12px;border-bottom:1px solid rgba(46,50,80,.5)}
+.ptable tr:last-child td{border-bottom:none}
+.ptable tr:hover td{background:rgba(255,255,255,.02)}
+.poz-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500}
+.no-atama{color:var(--muted);font-style:italic;font-size:11px}
+.sec-div{background:var(--surf2);padding:7px 12px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-family:var(--mono);border-top:2px solid;border-bottom:1px solid var(--bord)}
+.sec-kk{color:var(--kk);border-top-color:var(--kk)}.sec-acil{color:var(--acil);border-top-color:var(--acil)}
+.row-kk td{background:rgba(56,217,169,.05)}.row-acil-n td{background:rgba(247,168,79,.08)}.row-acil-g td{background:rgba(247,168,79,.03)}
+.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:600}
+.b-kk{background:rgba(56,217,169,.15);color:var(--kk)}.b-acil{background:rgba(247,168,79,.15);color:var(--acil)}.b-uretim{background:rgba(79,142,247,.1);color:var(--accent)}
+
+/* ÜBERSICHTSKARTEN */
+.ozet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.25rem}
+.ozet-c{background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:.9rem;text-align:center}
+.ozet-n{font-family:var(--mono);font-size:22px;font-weight:600}
+.ozet-l{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* MITARBEITERLISTE (Verwaltung) */
+.table-wrap{border:1px solid var(--bord);border-radius:8px;overflow:hidden;overflow-x:auto}
+.mtable{width:100%;border-collapse:collapse;font-size:12px}
+.mtable th{background:var(--surf2);padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--bord);white-space:nowrap;font-family:var(--mono)}
+.mtable td{padding:6px 10px;border-bottom:1px solid rgba(46,50,80,.5);vertical-align:middle}
+.mtable tr:last-child td{border-bottom:none}
+.mtable tr:hover td{background:rgba(255,255,255,.02)}
+.mtable input{background:var(--surf2);border:1px solid transparent;border-radius:4px;padding:3px 7px;color:var(--text);font-size:12px;width:100%;outline:none}
+.mtable input:focus{border-color:var(--accent)}
+.gorev-sel{background:var(--surf2);border:1px solid var(--bord);border-radius:4px;padding:3px 6px;color:var(--text);font-size:11px;outline:none}
+.gorev-sel:focus{border-color:var(--accent)}
+
+/* POZİSYON YETKİNLİK TABLOSU */
+.poz-table-wrap{border:1px solid var(--bord);border-radius:8px;overflow:auto;max-height:70vh}
+.poz-table{border-collapse:collapse;font-size:11px;white-space:nowrap}
+.poz-table th{background:var(--surf2);padding:6px 8px;text-align:center;font-size:10px;color:var(--muted);border:1px solid var(--bord);position:sticky;top:0;z-index:10;font-family:var(--mono)}
+.poz-table th.isim-col{text-align:left;position:sticky;left:0;z-index:20;min-width:130px}
+.poz-table td{border:1px solid rgba(46,50,80,.5);padding:4px 6px;text-align:center;vertical-align:middle}
+.poz-table td.isim-td{text-align:left;position:sticky;left:0;background:var(--surf);z-index:5;padding:4px 10px;min-width:130px;font-size:12px}
+.poz-table tr:hover td{background:rgba(255,255,255,.02)}
+.poz-table tr:hover td.isim-td{background:var(--surf2)}
+.poz-tick{cursor:pointer;display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:3px;margin:auto;transition:all .15s;font-size:13px}
+.poz-tick.has{color:var(--green)}.poz-tick.no{color:var(--surf3)}
+.poz-tick:hover{background:var(--surf3)}
+
+/* FILTER BAR */
+.fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.9rem;align-items:center}
+
+/* İŞ YÖNETİMİ */
+.is-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:1rem}
+.is-card{background:var(--surf);border:1px solid var(--bord);border-radius:7px;padding:8px 10px;display:flex;align-items:center;gap:6px}
+.is-num{font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;width:28px}
+.is-name-inp{background:none;border:none;color:var(--text);font-size:12px;flex:1;outline:none;padding:2px 4px;border-radius:3px}
+.is-name-inp:focus{background:var(--surf2)}
+.is-del{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 4px;border-radius:3px;line-height:1}
+.is-del:hover{color:var(--danger);background:rgba(247,95,95,.1)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--surf);border:1px solid var(--bord);border-radius:12px;padding:1.5rem;min-width:340px;max-width:90vw}
+.modal-title{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);margin-bottom:1rem}
+.modal-row{margin-bottom:.75rem}
+.modal-lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surf)}
+::-webkit-scrollbar-thumb{background:var(--bord);border-radius:3px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo">FABRIK <span>/ Arbeitsplanungssystem</span></div>
+    <button onclick="dateiZuruecksetzen()" style="background:none;border:1px solid var(--bord);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--muted);cursor:pointer" title="Alle Daten zurücksetzen">↺ Zurücksetzen</button>
+    <button onclick="datenExportieren()" style="background:none;border:1px solid var(--green);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--green);cursor:pointer" title="Alle Daten als JSON-Datei speichern">⬇ Exportieren</button>
+    <label style="background:none;border:1px solid var(--accent);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--accent);cursor:pointer" title="Gespeicherte JSON-Datei laden">⬆ Importieren<input type="file" accept=".json" style="display:none" onchange="datenImportieren(this)"></label>
+  </div>
+  <div style="display:flex;align-items:center;gap:24px">
+    <div style="text-align:right">
+      <div id="uhr-zeit" style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent);letter-spacing:.05em">--:--:--</div>
+      <div id="uhr-datum" style="font-size:10px;color:var(--muted);letter-spacing:.04em"></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-num" style="color:var(--text)" id="s-top">0</div><div class="stat-lbl">Gesamt</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--accent)" id="s-akt">—</div><div class="stat-lbl">Aktiv</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--danger)" id="s-has">0</div><div class="stat-lbl">Krank</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--warn)" id="s-izn">0</div><div class="stat-lbl">Urlaub</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--muted)" id="s-ik">0</div><div class="stat-lbl">Urlaubspool</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="navtabs">
+  <button class="ntab active" onclick="showTab('devamsizlik',this)">Abwesenheit</button>
+  <button class="ntab" onclick="showTab('plan',this)" id="ntab-plan">Arbeitsplan</button>
+  <button class="ntab" onclick="showTab('personel',this)">Personalverwaltung</button>
+  <button class="ntab" onclick="showTab('yetkinlik',this)">Qualifikationsmatrix</button>
+  <button class="ntab" onclick="showTab('isler',this)">Arbeitsverwaltung</button>
+</div>
+
+<div class="content">
+
+<!-- DEVAMSIZLIK -->
+<div class="panel active" id="panel-devamsizlik">
+
+  <!-- Abwesenheitsliste -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-head">
+      <div class="card-title"><span class="dot d-red"></span>ABWESENHEITSVERWALTUNG</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="abw-krank-cnt" style="font-family:var(--mono);font-size:11px;color:var(--danger)">0 Krank</span>
+        <span style="color:var(--bord)">|</span>
+        <span id="abw-urlaub-cnt" style="font-family:var(--mono);font-size:11px;color:var(--warn)">0 Urlaub</span>
+        <button class="btn btn-success btn-sm" onclick="abwHinzufuegen()">+ Eintrag hinzufügen</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.9rem">
+      Hier Krank- und Urlaubsmeldungen erfassen. Der Arbeitsplan berücksichtigt automatisch alle aktiven Abwesenheiten für den Planungstag.
+    </div>
+    <div id="abw-liste" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div id="abw-leer" style="text-align:center;padding:1.5rem;color:var(--muted);font-size:12px">Keine Abwesenheiten eingetragen</div>
+  </div>
+
+  <!-- Heute abwesend -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-head">
+      <div class="card-title"><span class="dot d-red"></span>HEUTE ABWESEND <span id="heute-datum-lbl" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:8px"></span></div>
+      <span id="heute-gesamt" style="font-family:var(--mono);font-size:11px;color:var(--muted)">0 Pers.</span>
+    </div>
+    <div id="heute-liste" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px">
+      <span style="font-size:11px;color:var(--muted);font-style:italic">Wird automatisch berechnet</span>
+    </div>
+  </div>
+
+  <div class="plan-btn-wrap">
+    <button class="plan-btn" onclick="planOlustur()">▶ ARBEITSPLAN ERSTELLEN</button>
+  </div>
+</div>
+
+<!-- TUR PLANI -->
+<div class="panel" id="panel-plan">
+  <div class="ozet-grid" id="ozet-grid"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:.75rem">
+    <button class="btn btn-primary btn-sm" onclick="planDrucken()" style="gap:6px;display:flex;align-items:center">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Arbeitsplan drucken
+    </button>
+  </div>
+  <div id="tur-content"></div>
+</div>
+
+<!-- PERSONEL YÖNETİMİ -->
+<div class="panel" id="panel-personel">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="dot d-blue"></span>MITARBEITERLISTE <span id="per-degisiklik-badge" style="display:none;margin-left:8px;background:rgba(247,168,79,.2);color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:2px 8px;font-size:10px;font-family:var(--mono)">&#9679; Nicht gespeicherte Änderungen</span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-success btn-sm" onclick="showAddPersonel()">+ Neuer Mitarbeiter</button>
+        <button class="btn btn-sm" onclick="perImportKlick()" title="Excel / CSV / TXT importieren" style="border-color:var(--green);color:var(--green)">↑ Liste importieren</button>
+        <input type="file" id="per-import-input" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="perImportDatei(this)">
+        <button class="btn btn-primary btn-sm" id="per-kaydet-btn" onclick="personelKaydet()" style="display:none">✓ Speichern &amp; Anwenden</button>
+      </div>
+    </div>
+    <div class="fbar">
+      <input class="inp inp-sm" type="text" placeholder="Name suchen..." oninput="renderPersonelTable(this.value)" id="personel-search" style="width:180px">
+      <select class="inp inp-sm" onchange="renderPersonelTable()" id="personel-gorev-filter">
+        <option value="">Alle Aufgaben</option>
+        <option value="normal">Normal</option>
+        <option value="kk">Qualitätskontrolle</option>
+        <option value="acil">Notfalleinsatz</option>
+        <option value="izin_kadrosu">Urlaubspool</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.6rem">Nach Änderungen von Name oder Aufgabe auf <strong style="color:var(--accent)">Speichern &amp; Anwenden</strong> klicken. QK- und Notfallmitarbeiter werden automatisch für alle Positionen qualifiziert.</div>
+    <div class="table-wrap">
+      <table class="mtable">
+        <thead><tr>
+          <th style="width:40px">Nr.</th>
+          <th>Vorname</th>
+          <th>Nachname</th>
+          <th style="width:130px">Aufgabe</th>
+          <th style="width:90px">Pos. Anzahl</th>
+          <th style="width:80px">Aktion</th>
+        </tr></thead>
+        <tbody id="personel-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div id="per-saved-msg" style="display:none;text-align:center;padding:.75rem;background:rgba(56,217,169,.1);border:1px solid var(--kk);border-radius:8px;color:var(--kk);font-size:13px;margin-top:.5rem">
+    ✓ Personaländerungen gespeichert und aktiviert
+  </div>
+</div>
+
+<!-- YETKİNLİK MATRİSİ -->
+<div class="panel" id="panel-yetkinlik">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="dot d-green"></span>WER KANN WELCHE ARBEIT AUSFÜHREN <span id="yet-degisiklik-badge" style="display:none;margin-left:8px;background:rgba(247,168,79,.2);color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:2px 8px;font-size:10px;font-family:var(--mono)">&#9679; Nicht gespeicherte Änderungen</span></div>
+      <button class="btn btn-primary btn-sm" id="yet-kaydet-btn" onclick="yetkinlikKaydet()" style="display:none">✓ Speichern &amp; Anwenden</button>
+    </div>
+    <div class="fbar">
+      <input class="inp inp-sm" type="text" placeholder="Name filtern..." oninput="renderYetkinlik(this.value)" style="width:160px">
+      <span style="font-size:11px;color:var(--muted);margin-left:4px">Klicken → hinzufügen/entfernen · QK und NE automatisch alle Positionen ✓</span>
+    </div>
+    <div class="poz-table-wrap">
+      <table class="poz-table" id="yetkinlik-table"></table>
+    </div>
+  </div>
+  <div id="yet-saved-msg" style="display:none;text-align:center;padding:.75rem;background:rgba(56,217,169,.1);border:1px solid var(--kk);border-radius:8px;color:var(--kk);font-size:13px;margin-top:.5rem">
+    ✓ Qualifikationsänderungen gespeichert und aktiviert
+  </div>
+</div>
+
+<!-- İŞ YÖNETİMİ -->
+<div class="panel" id="panel-isler">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="dot d-blue"></span>ARBEITSPOSITIONEN <span id="is-degisiklik-badge" style="display:none;margin-left:8px;background:rgba(247,168,79,.2);color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:2px 8px;font-size:10px;font-family:var(--mono)">&#9679; Nicht gespeicherte Änderungen</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" onclick="isEkle()">+ Neue Position</button>
+        <button class="btn btn-sm" onclick="isImportKlick()" style="border-color:var(--green);color:var(--green)">↑ Liste importieren</button>
+        <input type="file" id="is-import-input" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="isImportDatei(this)">
+        <button class="btn btn-sm" id="is-alle-btn" onclick="isAlleMarkieren()">☐ Alle markieren</button>
+        <button class="btn btn-danger btn-sm" id="is-toplu-sil-btn" onclick="isTopluSil()" style="display:none">✕ Auswahl löschen</button>
+        <button class="btn btn-sm" id="is-toplu-edit-btn" onclick="isTopluBearbeiten()" style="display:none;border-color:var(--accent);color:var(--accent)">✎ Auswahl bearbeiten</button>
+        <button class="btn btn-primary btn-sm" id="is-kaydet-btn" onclick="isKaydet()" style="display:none">✓ Speichern &amp; Anwenden</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.9rem">Namen bearbeiten, importieren oder Positionen markieren für Sammelaktionen.</div>
+    <div class="is-grid" id="is-grid"></div>
+  </div>
+  <div id="is-saved-msg" style="display:none;text-align:center;padding:.75rem;background:rgba(56,217,169,.1);border:1px solid var(--kk);border-radius:8px;color:var(--kk);font-size:13px;margin-top:.5rem">
+    ✓ Änderungen gespeichert und aktiviert
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Yeni Personel</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  KALICI VERİ — localStorage
+// ============================================================
+const LS_ISCILER   = 'fab_isciler_v1';
+const LS_ISLER     = 'fab_isler_v1';
+const LS_ABW       = 'fab_abwesenheiten_v1';
+
+const DEFAULT_ISCILER = [{"id": 1, "ad": "Ahmet", "soyad": "Y.", "isim": "Ahmet Y.", "gorev": "normal", "maxPoz": 0, "istisna": false, "pozisyonlar": []}, {"id": 2, "ad": "Fatma", "soyad": "K.", "isim": "Fatma K.", "gorev": "kk", "maxPoz": 100, "istisna": false, "pozisyonlar": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100]}];
+const DEFAULT_ISLER   = [{"id": 1, "isim": "1. iş"}, {"id": 2, "isim": "2. iş"}, {"id": 3, "isim": "3. iş"}, {"id": 4, "isim": "4. iş"}, {"id": 5, "isim": "5. iş"}, {"id": 6, "isim": "6. iş"}, {"id": 7, "isim": "7. iş"}, {"id": 8, "isim": "8. iş"}, {"id": 9, "isim": "9. iş"}, {"id": 10, "isim": "10. iş"}, {"id": 11, "isim": "11. iş"}, {"id": 12, "isim": "12. iş"}, {"id": 13, "isim": "13. iş"}, {"id": 14, "isim": "14. iş"}, {"id": 15, "isim": "15. iş"}, {"id": 16, "isim": "16. iş"}, {"id": 17, "isim": "17. iş"}, {"id": 18, "isim": "18. iş"}, {"id": 19, "isim": "19. iş"}, {"id": 20, "isim": "20. iş"}, {"id": 21, "isim": "21. iş"}, {"id": 22, "isim": "22. iş"}, {"id": 23, "isim": "23. iş"}, {"id": 24, "isim": "24. iş"}, {"id": 25, "isim": "25. iş"}, {"id": 26, "isim": "26. iş"}, {"id": 27, "isim": "27. iş"}, {"id": 28, "isim": "28. iş"}, {"id": 29, "isim": "29. iş"}, {"id": 30, "isim": "30. iş"}, {"id": 31, "isim": "31. iş"}, {"id": 32, "isim": "32. iş"}, {"id": 33, "isim": "33. iş"}, {"id": 34, "isim": "34. iş"}, {"id": 35, "isim": "35. iş"}, {"id": 36, "isim": "36. iş"}, {"id": 37, "isim": "37. iş"}, {"id": 38, "isim": "38. iş"}, {"id": 39, "isim": "39. iş"}, {"id": 40, "isim": "40. iş"}, {"id": 41, "isim": "41. iş"}, {"id": 42, "isim": "42. iş"}, {"id": 43, "isim": "43. iş"}, {"id": 44, "isim": "44. iş"}, {"id": 45, "isim": "45. iş"}, {"id": 46, "isim": "46. iş"}, {"id": 47, "isim": "47. iş"}, {"id": 48, "isim": "48. iş"}, {"id": 49, "isim": "49. iş"}, {"id": 50, "isim": "50. iş"}, {"id": 51, "isim": "51. iş"}, {"id": 52, "isim": "52. iş"}, {"id": 53, "isim": "53. iş"}, {"id": 54, "isim": "54. iş"}, {"id": 55, "isim": "55. iş"}, {"id": 56, "isim": "56. iş"}, {"id": 57, "isim": "57. iş"}, {"id": 58, "isim": "58. iş"}, {"id": 59, "isim": "59. iş"}, {"id": 60, "isim": "60. iş"}, {"id": 61, "isim": "61. iş"}, {"id": 62, "isim": "62. iş"}, {"id": 63, "isim": "63. iş"}, {"id": 64, "isim": "64. iş"}, {"id": 65, "isim": "65. iş"}, {"id": 66, "isim": "66. iş"}, {"id": 67, "isim": "67. iş"}, {"id": 68, "isim": "68. iş"}, {"id": 69, "isim": "69. iş"}, {"id": 70, "isim": "70. iş"}, {"id": 71, "isim": "71. iş"}, {"id": 72, "isim": "72. iş"}, {"id": 73, "isim": "73. iş"}, {"id": 74, "isim": "74. iş"}, {"id": 75, "isim": "75. iş"}, {"id": 76, "isim": "76. iş"}, {"id": 77, "isim": "77. iş"}, {"id": 78, "isim": "78. iş"}, {"id": 79, "isim": "79. iş"}, {"id": 80, "isim": "80. iş"}, {"id": 81, "isim": "81. iş"}, {"id": 82, "isim": "82. iş"}, {"id": 83, "isim": "83. iş"}, {"id": 84, "isim": "84. iş"}, {"id": 85, "isim": "85. iş"}, {"id": 86, "isim": "86. iş"}, {"id": 87, "isim": "87. iş"}, {"id": 88, "isim": "88. iş"}, {"id": 89, "isim": "89. iş"}, {"id": 90, "isim": "90. iş"}, {"id": 91, "isim": "91. iş"}, {"id": 92, "isim": "92. iş"}, {"id": 93, "isim": "93. iş"}, {"id": 94, "isim": "94. iş"}, {"id": 95, "isim": "95. iş"}, {"id": 96, "isim": "96. iş"}, {"id": 97, "isim": "97. iş"}, {"id": 98, "isim": "98. iş"}, {"id": 99, "isim": "99. iş"}, {"id": 100, "isim": "100. iş"}];
+
+function lsLaden(){
+  try {
+    const ri = localStorage.getItem(LS_ISCILER);
+    const rp = localStorage.getItem(LS_ISLER);
+    const ra = localStorage.getItem(LS_ABW);
+    if(ri) ISCILER = JSON.parse(ri);
+    if(rp) ISLER   = JSON.parse(rp);
+    if(ra){ const a=JSON.parse(ra); abwesenheiten=a; abwNextId=a.length?Math.max(...a.map(x=>x.id))+1:1; }
+  } catch(e){ console.warn('localStorage Ladefehler:',e); }
+}
+
+function lsSpeichern(){
+  try {
+    localStorage.setItem(LS_ISCILER, JSON.stringify(ISCILER));
+    localStorage.setItem(LS_ISLER,   JSON.stringify(ISLER));
+    localStorage.setItem(LS_ABW,     JSON.stringify(abwesenheiten));
+  } catch(e){ console.warn('localStorage Speicherfehler:',e); }
+}
+
+// ============================================================
+//  VERİ
+// ============================================================
+let ISCILER = [...DEFAULT_ISCILER];
+let ISLER   = [...DEFAULT_ISLER];
+
+// Devamsızlık
+let hastaSet = new Set();
+let izinSet  = new Set();
+
+// Plan sonucu
+let planData = null;
+let aktifTur = 1;
+
+// ============================================================
+//  YARDIMCI
+// ============================================================
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function gorevBadge(g){
+  const map={kk:'<span class="badge b-kk">QK</span>',acil:'<span class="badge b-acil">NE</span>',
+    izin_kadrosu:'<span class="badge" style="background:rgba(120,128,168,.15);color:var(--muted)">UP</span>'};
+  return map[g]||'';
+}
+function gorevColor(g){
+  return {kk:'var(--kk)',acil:'var(--acil)',izin_kadrosu:'var(--muted)',normal:'var(--text)'}[g]||'var(--text)';
+}
+
+// ============================================================
+//  STATS
+// ============================================================
+function updateStats(){
+  const devre=getHeuteAbwesendeIds();
+  const aktif=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk').length;
+  const heute=heuteDatumStr();
+  document.getElementById('s-top').textContent=ISCILER.length;
+  document.getElementById('s-akt').textContent=aktif;
+  document.getElementById('s-has').textContent=abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).length;
+  document.getElementById('s-izn').textContent=abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).length;
+  document.getElementById('s-ik').textContent=ISCILER.filter(i=>i.gorev==='izin_kadrosu').length;
+}
+
+// ============================================================
+//  NAV
+// ============================================================
+function showTab(tab,btn){
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='yetkinlik'){yetkinlikTaslak=null;renderYetkinlik('');}
+  if(tab==='personel'){personelTaslak=iscilerDeepCopy(ISCILER);renderPersonelTable('');}
+  if(tab==='isler'){islerTaslak=ISLER.map(is=>({...is}));renderIsGrid();}
+  if(tab==='devamsizlik'){renderAbwListe();renderHeuteListe();}
+}
+
+// ============================================================
+//  UHR
+// ============================================================
+function uhrzeitAktualisieren(){
+  const jetzt=new Date();
+  const tage=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const monate=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  document.getElementById('uhr-zeit').textContent=
+    String(jetzt.getHours()).padStart(2,'0')+':'+
+    String(jetzt.getMinutes()).padStart(2,'0')+':'+
+    String(jetzt.getSeconds()).padStart(2,'0');
+  document.getElementById('uhr-datum').textContent=
+    tage[jetzt.getDay()]+', '+jetzt.getDate()+'. '+monate[jetzt.getMonth()]+' '+jetzt.getFullYear();
+  document.getElementById('heute-datum-lbl').textContent=
+    '('+jetzt.getDate().toString().padStart(2,'0')+'.'+(jetzt.getMonth()+1).toString().padStart(2,'0')+'.'+jetzt.getFullYear()+')';
+}
+setInterval(uhrzeitAktualisieren,1000);
+uhrzeitAktualisieren();
+
+// ============================================================
+//  ABWESENHEIT
+// ============================================================
+let abwesenheiten=[];
+let abwNextId=1;
+
+function heuteDatumStr(){
+  const h=new Date();
+  return h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+}
+
+function isHeuteAbwesend(e){
+  const heute=heuteDatumStr();
+  return e.von<=heute&&e.bis>=heute;
+}
+
+function getHeuteAbwesendeIds(){
+  const ids=new Set();
+  abwesenheiten.forEach(e=>{if(isHeuteAbwesend(e))ids.add(e.isciId)});
+  ISCILER.forEach(i=>{if(i.gorev==='izin_kadrosu')ids.add(i.id)});
+  return ids;
+}
+
+function gorevKurz(g){return {kk:'QK',acil:'NE',izin_kadrosu:'UP'}[g]||'';}
+
+function abwHinzufuegen(){
+  const heute=heuteDatumStr();
+  document.getElementById('modal-title').textContent='Abwesenheit erfassen';
+  const opts=ISCILER.map(i=>`<option value="${i.id}">${i.ad} ${i.soyad}${i.gorev!=='normal'?' ['+gorevKurz(i.gorev)+']':''}</option>`).join('');
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-row"><div class="modal-lbl">Mitarbeiter</div>
+      <select class="inp inp-w" id="m-abw-isci">${opts}</select></div>
+    <div class="modal-row"><div class="modal-lbl">Grund</div>
+      <select class="inp inp-w" id="m-abw-typ">
+        <option value="krank">Krank (Arbeitsunfähig)</option>
+        <option value="urlaub">Urlaub</option>
+      </select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="modal-row"><div class="modal-lbl">Von (Datum)</div>
+        <input type="date" class="inp inp-w" id="m-abw-von" value="${heute}"></div>
+      <div class="modal-row"><div class="modal-lbl">Bis (Datum)</div>
+        <input type="date" class="inp inp-w" id="m-abw-bis" value="${heute}"></div>
+    </div>`;
+  document.getElementById('modal-actions').innerHTML=`
+    <button class="btn" onclick="closeModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="abwSpeichern()">Speichern</button>`;
+  document.getElementById('modal').style.display='flex';
+}
+
+function abwSpeichern(){
+  const isciId=parseInt(document.getElementById('m-abw-isci').value);
+  const typ=document.getElementById('m-abw-typ').value;
+  const von=document.getElementById('m-abw-von').value;
+  const bis=document.getElementById('m-abw-bis').value;
+  if(!von||!bis){alert('Bitte Datum eingeben');return}
+  if(von>bis){alert('Von-Datum muss vor Bis-Datum liegen');return}
+  abwesenheiten.push({id:abwNextId++,isciId,typ,von,bis});
+  closeModal();renderAbwListe();renderHeuteListe();updateStats();
+  lsSpeichern();
+}
+
+function abwLoeschen(abwId){
+  abwesenheiten=abwesenheiten.filter(e=>e.id!==abwId);
+  renderAbwListe();renderHeuteListe();updateStats();
+  lsSpeichern();
+}
+
+function renderAbwListe(){
+  const el=document.getElementById('abw-liste');
+  const leer=document.getElementById('abw-leer');
+  const sorted=[...abwesenheiten].sort((a,b)=>a.von.localeCompare(b.von));
+  if(!sorted.length){el.innerHTML='';leer.style.display='block';return}
+  leer.style.display='none';
+  el.innerHTML=sorted.map(e=>{
+    const isci=ISCILER.find(i=>i.id===e.isciId);if(!isci)return'';
+    const aktiv=isHeuteAbwesend(e);
+    const col=e.typ==='krank'?'var(--danger)':'var(--warn)';
+    const label=e.typ==='krank'?'Krank':'Urlaub';
+    const vonDE=e.von.split('-').reverse().join('.');
+    const bisDE=e.bis.split('-').reverse().join('.');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--surf2);border-radius:6px;border-left:3px solid ${col}">
+      <div style="flex:1;font-size:12px;font-weight:500">${isci.ad} ${isci.soyad} ${gorevBadge(isci.gorev)}</div>
+      <div style="font-size:11px;font-family:var(--mono);color:${col};background:rgba(0,0,0,.2);padding:2px 8px;border-radius:3px">${label}</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${vonDE} – ${bisDE}</div>
+      ${aktiv?'<div style="font-size:10px;background:rgba(247,95,95,.2);color:var(--danger);padding:2px 6px;border-radius:3px;font-weight:600">HEUTE AKTIV</div>':''}
+      <button class="btn-icon" onclick="abwLoeschen(${e.id})" title="Löschen">×</button>
+    </div>`;
+  }).join('');
+  const heute=heuteDatumStr();
+  const krankH=abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).length;
+  const urlaubH=abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).length;
+  document.getElementById('abw-krank-cnt').textContent=krankH+' Krank';
+  document.getElementById('abw-urlaub-cnt').textContent=urlaubH+' Urlaub';
+}
+
+function renderHeuteListe(){
+  const heIds=getHeuteAbwesendeIds();
+  const el=document.getElementById('heute-liste');
+  document.getElementById('heute-gesamt').textContent=heIds.size+' Pers.';
+  if(!heIds.size){
+    el.innerHTML='<span style="font-size:11px;color:var(--muted);font-style:italic">Alle Mitarbeiter anwesend</span>';
+    return;
+  }
+  el.innerHTML=[...heIds].map(id=>{
+    const i=ISCILER.find(x=>x.id===id);if(!i)return'';
+    const e=abwesenheiten.find(x=>x.isciId===id&&isHeuteAbwesend(x));
+    const col=e?(e.typ==='krank'?'var(--danger)':'var(--warn)'):'var(--muted)';
+    const lbl=e?(e.typ==='krank'?'Krank':'Urlaub'):'Pool';
+    return `<div style="background:var(--surf2);border:1px solid var(--bord);border-left:3px solid ${col};border-radius:5px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px">
+      <span>${i.ad} ${i.soyad}</span>
+      <span style="font-size:9px;font-family:var(--mono);color:${col}">${lbl}</span>
+    </div>`;
+  }).join('');
+}
+// ============================================================
+//  PLAN OLUŞTUR
+// ============================================================
+function planOlustur(){
+  const devre=getHeuteAbwesendeIds();
+  const kkler=ISCILER.filter(i=>i.gorev==='kk');
+  const aciller=ISCILER.filter(i=>i.gorev==='acil'&&!devre.has(i.id));
+  const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk');
+
+  const turlar={};
+  for(let tur=1;tur<=4;tur++){
+    turlar[tur]={};
+    const atanan=new Set();
+    const pozlar=shuffle(ISLER.map(is=>is.id));
+    for(const poz of pozlar){
+      const uyg=aktifler.filter(i=>{
+        if(atanan.has(i.id))return false;
+        if(!i.pozisyonlar.includes(poz))return false;
+        for(let t=1;t<tur;t++)if(turlar[t][poz]&&turlar[t][poz].id===i.id)return false;
+        return true;
+      });
+      if(uyg.length){const s=uyg[Math.floor(Math.random()*uyg.length)];turlar[tur][poz]=s;atanan.add(s.id)}
+    }
+  }
+
+  const acilRot={};
+  for(let t=1;t<=4;t++)acilRot[t]=aciller[t-1]||null;
+
+  planData={turlar,kkler,aciller,acilRot,aktifler,devre};
+
+  document.getElementById('ozet-grid').innerHTML=`
+    <div class="ozet-c"><div class="ozet-n" style="color:var(--accent)">${aktifler.length}</div><div class="ozet-l">Aktive Mitarbeiter</div></div>
+    <div class="ozet-c"><div class="ozet-n" style="color:var(--kk)">${kkler.length}</div><div class="ozet-l">Qualitätskontrolle</div></div>
+    <div class="ozet-c"><div class="ozet-n" style="color:var(--acil)">${aciller.length}</div><div class="ozet-l">Notfalleinsatz</div></div>
+    <div class="ozet-c"><div class="ozet-n" style="color:var(--danger)">${(()=>{const h=heuteDatumStr();return abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=h&&e.bis>=h).length})()}</div><div class="ozet-l">Krank</div></div>
+    <div class="ozet-c"><div class="ozet-n" style="color:var(--warn)">${(()=>{const h=heuteDatumStr();return abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=h&&e.bis>=h).length})()}</div><div class="ozet-l">Urlaub</div></div>
+    <div class="ozet-c"><div class="ozet-n" style="color:var(--muted)">${ISCILER.filter(i=>i.gorev==='izin_kadrosu').length}</div><div class="ozet-l">Urlaubspool</div></div>
+  `;
+
+  renderAllTurs();
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('ntab-plan').classList.add('active');
+  document.getElementById('panel-plan').classList.add('active');
+}
+
+const TUR_COLORS=['#1565C0','#2E7D32','#E65100','#6A1B9A'];
+const TUR_LABELS=['1.Runde','2.Runde','3.Runde','4.Runde'];
+
+function renderAllTurs(){
+  if(!planData){document.getElementById('tur-content').innerHTML='';return}
+  const {turlar,kkler,aciller,acilRot}=planData;
+
+  // Alle Zeilen sammeln: normale Positionen + QK + NE
+  // Her satır: {label, t1isci, t2isci, t3isci, t4isci, rowType}
+  const rows=[];
+
+  // 1. Normal iş pozisyonları
+  ISLER.forEach(is=>{
+    rows.push({
+      label: is.isim,
+      cells: [1,2,3,4].map(t=>{
+        const i=turlar[t][is.id];
+        if(!i) return {text:'—',cls:'no-atama-td'};
+        const isAcil=i.gorev==='acil';
+        return {text:`${i.ad} ${i.soyad}`, badge: isAcil?'NE':'', cls: isAcil?'acil-cell':''};
+      }),
+      rowType:'normal'
+    });
+  });
+
+  // 2. Kalite Kontrol bölümü (separator + satırlar)
+  rows.push({separator:true, label:'QUALITÄTSKONTROLLE', cls:'sec-kk'});
+  kkler.forEach(kk=>{
+    rows.push({
+      label:'Qualitätskontrolle',
+      cells:[1,2,3,4].map(()=>({text:`${kk.ad} ${kk.soyad}`, badge:'QK', cls:'kk-cell'})),
+      rowType:'kk'
+    });
+  });
+
+  // 3. Acil Müdahale bölümü
+  rows.push({separator:true, label:'NOTFALLEINSATZ', cls:'sec-acil'});
+  aciller.forEach(a=>{
+    rows.push({
+      label: 'Notfalleinsatz',
+      cells:[1,2,3,4].map(t=>{
+        const nobetci=acilRot[t];
+        if(nobetci&&nobetci.id===a.id){
+          return {text:`${a.ad} ${a.soyad}`, badge:'Bereitschaft', cls:'acil-nobetci-cell', bold:true};
+        }
+        // Normal işte nerede?
+        let pAdi='—';
+        for(const is of ISLER){if(turlar[t][is.id]&&turlar[t][is.id].id===a.id){pAdi=is.isim;break}}
+        return {text:`${a.ad} ${a.soyad}`, sub:pAdi, badge:'NE', cls:'acil-cell'};
+      }),
+      rowType:'acil'
+    });
+  });
+
+  // Tabloyu oluştur
+  let h=`<div class="ptable-wrap" style="overflow-x:auto">
+  <table class="ptable" style="width:100%;table-layout:fixed">
+    <colgroup>
+      <col style="width:160px">
+      ${[1,2,3,4].map(()=>'<col>').join('')}
+    </colgroup>
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--muted)">Arbeitsposition</th>
+        ${TUR_COLORS.map((col,i)=>`<th style="background:${col};color:#fff;text-align:center;font-size:11px;padding:8px 6px;letter-spacing:.04em">${TUR_LABELS[i]}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>`;
+
+  rows.forEach((row,ri)=>{
+    if(row.separator){
+      h+=`<tr><td colspan="5" class="sec-div ${row.cls}" style="font-size:10px">${row.label}</td></tr>`;
+      return;
+    }
+    const rowBg=ri%2===0?'':'background:rgba(255,255,255,.015)';
+    const rowCls=row.rowType==='kk'?'row-kk':row.rowType==='acil'?'row-acil-g':'';
+    h+=`<tr class="${rowCls}" style="${rowBg}">
+      <td class="poz-lbl" style="font-size:11px;font-weight:500">${row.label}</td>`;
+    row.cells.forEach(cell=>{
+      const bold=cell.bold?'font-weight:600':'';
+      const color=cell.cls==='kk-cell'?'color:#1B5E20':cell.cls==='acil-nobetci-cell'?'color:#BF360C':cell.cls==='acil-cell'?'color:#795548':'';
+      const badge=cell.badge?` <span style="font-size:9px;font-family:var(--mono);opacity:.8">[${cell.badge}]</span>`:'';
+      const sub=cell.sub?`<br><span style="font-size:9px;color:var(--muted)">${cell.sub}</span>`:'';
+      const noAtama=cell.cls==='no-atama-td'?'color:var(--muted);font-style:italic':'';
+      h+=`<td style="font-size:11px;text-align:center;${bold};${color};${noAtama}">${cell.text}${badge}${sub}</td>`;
+    });
+    h+='</tr>';
+  });
+
+  h+='</tbody></table></div>';
+  document.getElementById('tur-content').innerHTML=h;
+}
+
+function planDrucken(){
+  const datum = new Date().toLocaleDateString('de-DE');
+  const titelBereich = document.getElementById('ozet-grid').innerHTML;
+  const planBereich = document.getElementById('tur-content').innerHTML;
+  const win = window.open('','_blank','width=1200,height=900');
+  win.document.write(`<!DOCTYPE html><html lang="de"><head>
+    <meta charset="UTF-8">
+    <title>Fabrik Arbeitsplan – ${datum}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;font-size:11px;color:#111;background:#fff;padding:1.5cm}
+      h1{font-size:16px;font-weight:700;margin-bottom:4px;color:#1a1a2e}
+      .meta{font-size:10px;color:#666;margin-bottom:1rem;border-bottom:1px solid #ccc;padding-bottom:.5rem}
+      .ozet{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem}
+      .ozet-c{border:1px solid #ddd;border-radius:4px;padding:6px 12px;text-align:center;min-width:80px}
+      .ozet-n{font-size:18px;font-weight:700;color:#333}
+      .ozet-l{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em}
+      table{width:100%;border-collapse:collapse;font-size:10px}
+      th{padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #ccc}
+      td{padding:4px 8px;border:1px solid #e0e0e0;vertical-align:middle}
+      .poz-lbl{font-weight:600;color:#333}
+      .sec-div{font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border-top:2px solid}
+      .sec-kk{background:#E8F5E9;color:#1B5E20;border-top-color:#388E3C}
+      .sec-acil{background:#FFF3E0;color:#BF360C;border-top-color:#E65100}
+      .row-kk td{background:#F1F8E9}
+      .row-acil-g td{background:#FFF8F0}
+      tr:nth-child(even) td{background-color:rgba(0,0,0,.025)}
+      .row-kk:nth-child(even) td{background:#E8F5E9}
+      .row-acil-g:nth-child(even) td{background:#FFF3E0}
+      @media print{body{padding:.5cm}@page{margin:.5cm;size:A4 landscape}}
+    </style>
+  </head><body>
+    <h1>Fabrik Arbeitsplan</h1>
+    <div class="meta">Erstellt am: ${datum} &nbsp;|&nbsp; System: Fabrik Arbeitsplanungssystem</div>
+    <div class="ozet">${titelBereich.replace(/class="ozet-n" style="[^"]*"/g,'class="ozet-n"').replace(/class="ozet-c"/g,'class="ozet-c"')}</div>
+    ${planBereich}
+    <script>window.onload=function(){window.print()}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+// ============================================================
+//  PERSONEL YÖNETİMİ
+// ============================================================
+let personelTaslak = null;
+
+function iscilerDeepCopy(arr){
+  return arr.map(i=>({...i, pozisyonlar:[...i.pozisyonlar]}));
+}
+
+// KK veya Acil görevliler için tüm ISLER pozisyonlarını ata
+function gorevePozUygula(taslakArr){
+  const tumPozIds = ISLER.map(is=>is.id);
+  taslakArr.forEach(i=>{
+    if(i.gorev==='kk'||i.gorev==='acil'){
+      i.pozisyonlar = [...tumPozIds];
+      i.maxPoz = tumPozIds.length;
+    }
+  });
+}
+
+function perMarkDirty(){
+  document.getElementById('per-degisiklik-badge').style.display='inline-block';
+  document.getElementById('per-kaydet-btn').style.display='inline-block';
+  document.getElementById('per-saved-msg').style.display='none';
+}
+
+function renderPersonelTable(search){
+  if(!personelTaslak) personelTaslak = iscilerDeepCopy(ISCILER);
+  if(search===undefined)search=document.getElementById('personel-search').value;
+  const gorevF=document.getElementById('personel-gorev-filter').value;
+  const s=search.toLowerCase();
+  const list=personelTaslak.filter(i=>{
+    if(gorevF&&i.gorev!==gorevF)return false;
+    if(s&&!(i.ad+' '+i.soyad).toLowerCase().includes(s))return false;
+    return true;
+  });
+  const tbody=document.getElementById('personel-tbody');
+  tbody.innerHTML=list.map(i=>`
+    <tr id="pr-${i.id}">
+      <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">#${i.id}</td>
+      <td><input value="${i.ad}" oninput="updatePerTaslak(${i.id},'ad',this.value)" style="width:90px"></td>
+      <td><input value="${i.soyad}" oninput="updatePerTaslak(${i.id},'soyad',this.value)" style="width:60px"></td>
+      <td>
+        <select class="gorev-sel" onchange="updatePerTaslak(${i.id},'gorev',this.value)">
+          <option value="normal"${i.gorev==='normal'?' selected':''}>Normal</option>
+          <option value="kk"${i.gorev==='kk'?' selected':''}>Qualitätskontrolle</option>
+          <option value="acil"${i.gorev==='acil'?' selected':''}>Notfalleinsatz</option>
+          <option value="izin_kadrosu"${i.gorev==='izin_kadrosu'?' selected':''}>Urlaubspool</option>
+        </select>
+      </td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center">${i.pozisyonlar.length}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="personelSilTaslak(${i.id})">Löschen</button></td>
+    </tr>
+  `).join('');
+}
+
+function updatePerTaslak(id,alan,val){
+  const i=personelTaslak.find(x=>x.id===id);if(!i)return;
+  i[alan]=val;
+  perMarkDirty();
+}
+
+function personelSilTaslak(id){
+  if(!confirm('Möchten Sie diesen Mitarbeiter wirklich löschen?'))return;
+  personelTaslak=personelTaslak.filter(i=>i.id!==id);
+  perMarkDirty();
+  renderPersonelTable('');
+}
+
+function personelKaydet(){
+  // KK ve Acil görevlilere tüm pozisyonları ata
+  gorevePozUygula(personelTaslak);
+  // Entwurf in ISCILER übernehmen
+  ISCILER = iscilerDeepCopy(personelTaslak);
+  // Silinenleri devamsızlıktan çıkar
+  const ids = new Set(ISCILER.map(i=>i.id));
+  // Abwesenheiten bleiben erhalten
+  // Badge gizle
+  document.getElementById('per-degisiklik-badge').style.display='none';
+  document.getElementById('per-kaydet-btn').style.display='none';
+  const msg=document.getElementById('per-saved-msg');
+  msg.style.display='block';
+  setTimeout(()=>msg.style.display='none',3000);
+  // Tabloyu yenile (poz sayıları güncellendi)
+  renderPersonelTable('');
+  updateStats();
+  if(planData) renderAllTurs();
+  lsSpeichern();
+}
+
+function showAddPersonel(){
+  document.getElementById('modal-title').textContent='Neuen Mitarbeiter hinzufügen';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-row"><div class="modal-lbl">Vorname</div><input class="inp inp-w" id="m-ad" placeholder="Vorname"></div>
+    <div class="modal-row"><div class="modal-lbl">Nachname (Abk.)</div><input class="inp inp-w" id="m-soyad" placeholder="A."></div>
+    <div class="modal-row"><div class="modal-lbl">Aufgabe</div>
+      <select class="inp inp-w" id="m-gorev">
+        <option value="normal">Normal</option>
+        <option value="kk">Qualitätskontrolle</option>
+        <option value="acil">Notfalleinsatz</option>
+        <option value="izin_kadrosu">Urlaubspool</option>
+      </select>
+    </div>`;
+  document.getElementById('modal-actions').innerHTML=`
+    <button class="btn" onclick="closeModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="addPersonel()">Hinzufügen</button>`;
+  document.getElementById('modal').style.display='flex';
+}
+
+function addPersonel(){
+  if(!personelTaslak) personelTaslak = iscilerDeepCopy(ISCILER);
+  const ad=document.getElementById('m-ad').value.trim();
+  const soyad=document.getElementById('m-soyad').value.trim();
+  const gorev=document.getElementById('m-gorev').value;
+  if(!ad){alert('Vorname darf nicht leer sein');return}
+  const newId=Math.max(0,...personelTaslak.map(i=>i.id))+1;
+  const tumPozIds=ISLER.map(is=>is.id);
+  const poz=(gorev==='kk'||gorev==='acil')?[...tumPozIds]:[];
+  personelTaslak.push({id:newId,ad,soyad,isim:ad+' '+soyad,gorev,maxPoz:poz.length,istisna:false,pozisyonlar:poz});
+  perMarkDirty();
+  closeModal();renderPersonelTable('');updateStats();
+  lsSpeichern();
+}
+
+// ============================================================
+//  YETKİNLİK MATRİSİ
+// ============================================================
+let yetkinlikTaslak = null; // {isciId: Set(pozIds)}
+
+function yetMarkDirty(){
+  document.getElementById('yet-degisiklik-badge').style.display='inline-block';
+  document.getElementById('yet-kaydet-btn').style.display='inline-block';
+  document.getElementById('yet-saved-msg').style.display='none';
+}
+
+function renderYetkinlik(search=''){
+  // Taslağı ISCILER'den init et
+  if(!yetkinlikTaslak){
+    yetkinlikTaslak={};
+    ISCILER.forEach(i=>{yetkinlikTaslak[i.id]=new Set(i.pozisyonlar)});
+  }
+  const s=search.toLowerCase();
+  const list=ISCILER.filter(i=>!s||(i.ad+' '+i.soyad).toLowerCase().includes(s));
+  const table=document.getElementById('yetkinlik-table');
+  let h='<thead><tr><th class="isim-col">Ad Soyad</th>';
+  ISLER.forEach(is=>{h+=`<th title="${is.isim}" style="font-size:9px">${is.id}</th>`});
+  h+='</tr></thead><tbody>';
+  list.forEach(i=>{
+    const isKkAcil=(i.gorev==='kk'||i.gorev==='acil');
+    const pSet=yetkinlikTaslak[i.id]||new Set();
+    const rowStyle=isKkAcil?'background:rgba(56,217,169,.04)':'';
+    h+=`<tr style="${rowStyle}"><td class="isim-td">${i.ad} ${i.soyad} ${gorevBadge(i.gorev)}${isKkAcil?'<span style="font-size:9px;color:var(--muted);margin-left:4px">(alle Positionen)</span>':''}</td>`;
+    ISLER.forEach(is=>{
+      const has=isKkAcil?true:pSet.has(is.id);
+      const clickable=isKkAcil?'':'onclick="togglePozTaslak('+i.id+','+is.id+')"';
+      const cursor=isKkAcil?'cursor:default':'cursor:pointer';
+      h+=`<td><div class="poz-tick ${has?'has':'no'}" ${clickable} title="${isKkAcil?'KK/AM: tüm işler otomatik':is.isim}" style="${cursor}">${has?'✓':''}</div></td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody>';
+  table.innerHTML=h;
+}
+
+function togglePozTaslak(isciId,pozId){
+  const i=ISCILER.find(x=>x.id===isciId);if(!i)return;
+  if(i.gorev==='kk'||i.gorev==='acil')return; // KK/AM değiştirilemez
+  if(!yetkinlikTaslak[isciId]) yetkinlikTaslak[isciId]=new Set(i.pozisyonlar);
+  const pSet=yetkinlikTaslak[isciId];
+  if(pSet.has(pozId))pSet.delete(pozId);else pSet.add(pozId);
+  yetMarkDirty();
+  // Sadece o hücreyi güncelle
+  const cell=event.currentTarget;
+  const has=pSet.has(pozId);
+  cell.className='poz-tick '+(has?'has':'no');
+  cell.textContent=has?'✓':'';
+}
+
+function yetkinlikKaydet(){
+  // Taslaktaki değişiklikleri ISCILER'e uygula
+  ISCILER.forEach(i=>{
+    if(i.gorev==='kk'||i.gorev==='acil'){
+      i.pozisyonlar=ISLER.map(is=>is.id);
+    } else if(yetkinlikTaslak[i.id]){
+      i.pozisyonlar=[...yetkinlikTaslak[i.id]].sort((a,b)=>a-b);
+    }
+    i.maxPoz=i.pozisyonlar.length;
+  });
+  yetkinlikTaslak=null; // sıfırla, ISCILER'den yeniden init edilecek
+  document.getElementById('yet-degisiklik-badge').style.display='none';
+  document.getElementById('yet-kaydet-btn').style.display='none';
+  const msg=document.getElementById('yet-saved-msg');
+  msg.style.display='block';
+  setTimeout(()=>msg.style.display='none',3000);
+  // Matrisi yenile
+  renderYetkinlik(document.querySelector('#panel-yetkinlik input').value);
+  updateStats();
+  if(planData) renderAllTurs();
+  lsSpeichern();
+}
+
+// ============================================================
+//  İŞ YÖNETİMİ
+// ============================================================
+let islerTaslak = null; // kaydedilmemiş kopya
+
+let isSeciliSet = new Set();
+
+function renderIsGrid(){
+  if(!islerTaslak) islerTaslak = ISLER.map(is=>({...is}));
+  document.getElementById('is-grid').innerHTML=islerTaslak.map(is=>`
+    <div class="is-card${isSeciliSet.has(is.id)?' is-selected':''}" id="iscard-${is.id}" style="${isSeciliSet.has(is.id)?'border-color:var(--accent);background:rgba(79,142,247,.08)':''}">
+      <input type="checkbox" class="is-chk" ${isSeciliSet.has(is.id)?'checked':''} onchange="isCheckToggle(${is.id},this.checked)" style="flex-shrink:0;cursor:pointer;accent-color:var(--accent)">
+      <div class="is-num">#${is.id}</div>
+      <input class="is-name-inp" value="${is.isim}" oninput="updateIsTaslak(${is.id},this.value)" title="Bearbeiten">
+      <button class="is-del" onclick="isSilTaslak(${is.id})" title="Löschen">×</button>
+    </div>
+  `).join('');
+  isTopluBtnGoster();
+}
+
+function isCheckToggle(id, checked){
+  if(checked) isSeciliSet.add(id);
+  else isSeciliSet.delete(id);
+  isTopluBtnGoster();
+  // Kart rengini güncelle
+  const card = document.getElementById('iscard-'+id);
+  if(card){
+    card.style.borderColor = checked?'var(--accent)':'';
+    card.style.background = checked?'rgba(79,142,247,.08)':'';
+  }
+}
+
+function isTopluBtnGoster(){
+  const cnt = isSeciliSet.size;
+  const silBtn = document.getElementById('is-toplu-sil-btn');
+  const editBtn = document.getElementById('is-toplu-edit-btn');
+  if(silBtn) silBtn.style.display = cnt>0?'inline-block':'none';
+  if(editBtn) editBtn.style.display = cnt>0?'inline-block':'none';
+  const alleBtn = document.getElementById('is-alle-btn');
+  if(alleBtn) alleBtn.textContent = (islerTaslak&&cnt===islerTaslak.length)?'☑ Alle aufheben':'☐ Alle markieren';
+}
+
+function isAlleMarkieren(){
+  if(!islerTaslak) return;
+  if(isSeciliSet.size===islerTaslak.length){
+    isSeciliSet.clear();
+  } else {
+    islerTaslak.forEach(is=>isSeciliSet.add(is.id));
+  }
+  renderIsGrid();
+}
+
+function isTopluSil(){
+  if(!isSeciliSet.size) return;
+  if(!confirm(`${isSeciliSet.size} Positionen wirklich löschen?`)) return;
+  islerTaslak = islerTaslak.filter(is=>!isSeciliSet.has(is.id));
+  isSeciliSet.clear();
+  markDirty();
+  renderIsGrid();
+}
+
+function isTopluBearbeiten(){
+  if(!isSeciliSet.size) return;
+  document.getElementById('modal-title').textContent=`${isSeciliSet.size} Positionen bearbeiten`;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-row"><div class="modal-lbl">Neues Präfix (wird vor der Nummer gesetzt)</div>
+      <input class="inp inp-w" id="m-toplu-prefix" placeholder="z.B. 'Montage' → Montage 1, Montage 2..."></div>
+    <div class="modal-row"><div class="modal-lbl">Oder: Alle ausgewählten umbenennen in</div>
+      <input class="inp inp-w" id="m-toplu-name" placeholder="Leer lassen wenn Präfix benutzt wird"></div>`;
+  document.getElementById('modal-actions').innerHTML=`
+    <button class="btn" onclick="closeModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="isTopluUmbenennen()">Anwenden</button>`;
+  document.getElementById('modal').style.display='flex';
+}
+
+function isTopluUmbenennen(){
+  const prefix = document.getElementById('m-toplu-prefix').value.trim();
+  const name   = document.getElementById('m-toplu-name').value.trim();
+  if(!prefix && !name){alert('Bitte einen Wert eingeben');return}
+  let counter=1;
+  islerTaslak.forEach(is=>{
+    if(!isSeciliSet.has(is.id)) return;
+    if(prefix) is.isim = prefix+' '+counter++;
+    else       is.isim = name;
+  });
+  markDirty();
+  isSeciliSet.clear();
+  closeModal();
+  renderIsGrid();
+}
+
+function markDirty(){
+  document.getElementById('is-degisiklik-badge').style.display='inline-block';
+  document.getElementById('is-kaydet-btn').style.display='inline-block';
+  document.getElementById('is-saved-msg').style.display='none';
+}
+
+function updateIsTaslak(id,val){
+  const is=islerTaslak.find(x=>x.id===id);
+  if(is){is.isim=val;markDirty();}
+}
+
+function isSilTaslak(id){
+  if(!confirm('Möchten Sie diese Arbeitsposition wirklich löschen?'))return;
+  islerTaslak=islerTaslak.filter(is=>is.id!==id);
+  markDirty();
+  renderIsGrid();
+}
+
+function isEkle(){
+  if(!islerTaslak) islerTaslak = ISLER.map(is=>({...is}));
+  const newId=Math.max(0,...islerTaslak.map(is=>is.id))+1;
+  islerTaslak.push({id:newId,isim:`${newId}. Arbeit`});
+  markDirty();
+  renderIsGrid();
+  // Yeni eklenen inputa fokusla
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('.is-name-inp');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  },50);
+}
+
+function isKaydet(){
+  // Taslaktaki değişiklikleri ISLER'e aktar
+  ISLER = islerTaslak.map(is=>({...is}));
+  // Yetkinlik matrisinden silinen pozisyonları temizle
+  const aktifIds = new Set(ISLER.map(is=>is.id));
+  ISCILER.forEach(i=>{i.pozisyonlar=i.pozisyonlar.filter(p=>aktifIds.has(p))});
+  // Badge ve butonu gizle
+  document.getElementById('is-degisiklik-badge').style.display='none';
+  document.getElementById('is-kaydet-btn').style.display='none';
+  // Başarı mesajı göster
+  const msg=document.getElementById('is-saved-msg');
+  msg.style.display='block';
+  setTimeout(()=>msg.style.display='none',3000);
+  // Plan varsa yenile
+  if(planData) renderAllTurs();
+  lsSpeichern();
+}
+
+// ============================================================
+//  IMPORT — PERSONEL
+// ============================================================
+function perImportKlick(){ document.getElementById('per-import-input').click(); }
+
+function perImportDatei(input){
+  const file=input.files[0]; if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  if(ext==='csv'||ext==='txt'){
+    reader.onload=e=>{
+      const rohe=e.target.result.split('\n').map(l=>l.replace(/\r$/,'')).filter(l=>l.trim());
+      const trenn=rohe[0].includes(';')?';':rohe[0].includes('\t')?'\t':',';
+      perZeilenVerarbeiten(rohe.map(l=>l.split(trenn).map(z=>z.trim().replace(/^"|"$/g,''))));
+    };
+    reader.readAsText(file,'UTF-8');
+  } else if(ext==='xlsx'||ext==='xls'){
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const zeilen=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).map(r=>r.map(v=>String(v).trim()));
+        perZeilenVerarbeiten(zeilen);
+      }catch(err){alert('Excel-Fehler: '+err.message);}
+    };
+    reader.readAsBinaryString(file);
+  }
+  input.value='';
+}
+
+function perZeilenVerarbeiten(zeilen){
+  if(!zeilen.length) return;
+  // Vorschau anzeigen
+  const vorschau = zeilen.slice(0,5).map(z=>z.join(' | ')).join('<br>');
+  document.getElementById('modal-title').textContent='Mitarbeiter importieren';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem">
+      <strong>${zeilen.length} Zeilen</strong> erkannt. Spalten zuordnen:
+    </div>
+    <div style="background:var(--surf2);border-radius:6px;padding:8px 12px;font-size:11px;font-family:var(--mono);margin-bottom:.9rem;max-height:80px;overflow:auto">${vorschau}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="modal-row"><div class="modal-lbl">Vorname (Spalte Nr.)</div>
+        <input class="inp inp-w" id="m-imp-vor" type="number" value="1" min="1"></div>
+      <div class="modal-row"><div class="modal-lbl">Nachname (Spalte Nr.)</div>
+        <input class="inp inp-w" id="m-imp-nach" type="number" value="2" min="1"></div>
+    </div>
+    <div class="modal-row"><div class="modal-lbl">Aufgabe (Spalte Nr., optional)</div>
+      <input class="inp inp-w" id="m-imp-aufg" type="number" value="3" min="1"></div>
+    <div class="modal-row" style="margin-top:.5rem">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="m-imp-header" checked style="accent-color:var(--accent)"> Erste Zeile ist Kopfzeile (überspringen)
+      </label>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:.5rem">Aufgabenwerte: normal, kk, acil, izin_kadrosu</div>`;
+  const zeilen_ref = zeilen;
+  document.getElementById('modal-actions').innerHTML=`
+    <button class="btn" onclick="closeModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="perImportUebernehmen(window._impZeilen)">Importieren</button>`;
+  window._impZeilen = zeilen;
+  document.getElementById('modal').style.display='flex';
+}
+
+function perImportUebernehmen(zeilen){
+  const vorIdx = parseInt(document.getElementById('m-imp-vor').value)-1;
+  const nachIdx = parseInt(document.getElementById('m-imp-nach').value)-1;
+  const aufgIdx = parseInt(document.getElementById('m-imp-aufg').value)-1;
+  const header = document.getElementById('m-imp-header').checked;
+  const start = header?1:0;
+  if(!personelTaslak) personelTaslak = iscilerDeepCopy(ISCILER);
+  let added=0;
+  for(let i=start;i<zeilen.length;i++){
+    const z=zeilen[i];
+    const ad=(z[vorIdx]||'').trim();
+    const soyad=(z[nachIdx]||'').trim();
+    if(!ad) continue;
+    const gorevRoh=(z[aufgIdx]||'').trim().toLowerCase();
+    const gorevMap={'kk':'kk','qk':'kk','qrk':'kk','qualität':'kk','qualitätskontrolle':'kk','qualitätskontrolleur':'kk','kontrolle':'kk','notfall':'acil','acil':'acil','ne':'acil','springer':'acil','springer(in)':'acil','spring':'acil','urlaub':'izin_kadrosu','pool':'izin_kadrosu','urlaubspool':'izin_kadrosu','normal':'normal','normalarbeiter':'normal'};
+    const gorev=gorevMap[gorevRoh]||'normal';
+    const tumPoz=ISLER.map(is=>is.id);
+    const poz=(gorev==='kk'||gorev==='acil')?[...tumPoz]:[];
+    const newId=Math.max(0,...personelTaslak.map(x=>x.id))+1;
+    personelTaslak.push({id:newId,ad,soyad,isim:ad+' '+soyad,gorev,maxPoz:poz.length,istisna:false,pozisyonlar:poz});
+    added++;
+  }
+  perMarkDirty();
+  closeModal();
+  renderPersonelTable('');
+  updateStats();
+  lsSpeichern();
+  alert(`${added} Mitarbeiter importiert!`);
+}
+
+// ============================================================
+//  IMPORT — ARBEITSPOSITIONEN
+// ============================================================
+function isImportKlick(){ document.getElementById('is-import-input').click(); }
+
+function isImportDatei(input){
+  const file=input.files[0]; if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  if(ext==='csv'||ext==='txt'){
+    reader.onload=e=>{
+      const rohe=e.target.result.split('\n').map(l=>l.replace(/\r$/,'')).filter(l=>l.trim());
+      const trenn=rohe[0].includes(';')?';':rohe[0].includes('\t')?'\t':',';
+      const zeilen=rohe.map(l=>l.split(trenn).map(z=>z.trim().replace(/^"|"$/g,'')));
+      isImportVerarbeiten(zeilen,'csv');
+    };
+    reader.readAsText(file,'UTF-8');
+  } else {
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const zeilen=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).map(r=>r.map(v=>String(v).trim()));
+        isImportVerarbeiten(zeilen,'csv');
+      }catch(err){alert('Excel-Fehler: '+err.message);}
+    };
+    reader.readAsBinaryString(file);
+  }
+  input.value='';
+}
+
+function isImportVerarbeiten(zeilen,typ){
+  // Vorschau + Spalte wählen
+  const vorschau=zeilen.slice(0,5).map(z=>z.join(' | ')).join('<br>');
+  document.getElementById('modal-title').textContent='Arbeitspositionen importieren';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem"><strong>${zeilen.length} Zeilen</strong> erkannt.</div>
+    <div style="background:var(--surf2);border-radius:6px;padding:8px 12px;font-size:11px;font-family:var(--mono);margin-bottom:.9rem;max-height:80px;overflow:auto">${vorschau}</div>
+    <div class="modal-row"><div class="modal-lbl">Positionsname (Spalte Nr.)</div>
+      <input class="inp inp-w" id="m-is-imp-col" type="number" value="1" min="1"></div>
+    <div class="modal-row" style="margin-top:.5rem">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="m-is-imp-header" checked style="accent-color:var(--accent)"> Erste Zeile ist Kopfzeile
+      </label>
+    </div>`;
+  window._isImpZeilen=zeilen;
+  document.getElementById('modal-actions').innerHTML=`
+    <button class="btn" onclick="closeModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="isImportUebernehmen()">Importieren</button>`;
+  document.getElementById('modal').style.display='flex';
+}
+
+function isImportUebernehmen(){
+  const colIdx=parseInt(document.getElementById('m-is-imp-col').value)-1;
+  const header=document.getElementById('m-is-imp-header').checked;
+  const zeilen=window._isImpZeilen;
+  const start=header?1:0;
+  if(!islerTaslak) islerTaslak=ISLER.map(is=>({...is}));
+  let added=0;
+  for(let i=start;i<zeilen.length;i++){
+    const name=(zeilen[i][colIdx]||'').trim();
+    if(!name) continue;
+    const newId=Math.max(0,...islerTaslak.map(x=>x.id))+1;
+    islerTaslak.push({id:newId,isim:name});
+    added++;
+  }
+  markDirty();
+  isSeciliSet.clear();
+  closeModal();
+  renderIsGrid();
+  lsSpeichern();
+  alert(`${added} Positionen importiert!`);
+}
+
+// ============================================================
+//  VERİ DIŞA/İÇE AKTARMA
+// ============================================================
+function datenExportieren(){
+  const snapshot = {
+    version: 1,
+    exportiert: new Date().toISOString(),
+    isciler: ISCILER,
+    isler: ISLER,
+    abwesenheiten: abwesenheiten
+  };
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const datum = new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
+  a.href = url;
+  a.download = `arbeitsplan_backup_${datum}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function datenImportieren(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!data.isciler || !data.isler){
+        alert('Ungültige Datei — keine Mitarbeiter- oder Positionsdaten gefunden.');
+        return;
+      }
+      if(!confirm(`Backup vom ${new Date(data.exportiert).toLocaleString('de-DE')} laden?\n\n${data.isciler.length} Mitarbeiter, ${data.isler.length} Positionen, ${data.abwesenheiten?.length||0} Abwesenheiten.\n\nAktuelle Daten werden überschrieben!`)) return;
+      ISCILER = data.isciler;
+      ISLER   = data.isler;
+      abwesenheiten = data.abwesenheiten || [];
+      abwNextId = abwesenheiten.length ? Math.max(...abwesenheiten.map(x=>x.id))+1 : 1;
+      lsSpeichern();
+      renderAbwListe();
+      renderHeuteListe();
+      updateStats();
+      // Aktif sekmeyi yenile
+      const aktifPanel = document.querySelector('.panel.active');
+      if(aktifPanel){
+        if(aktifPanel.id==='panel-personel'){personelTaslak=iscilerDeepCopy(ISCILER);renderPersonelTable('');}
+        if(aktifPanel.id==='panel-isler'){islerTaslak=ISLER.map(is=>({...is}));renderIsGrid();}
+        if(aktifPanel.id==='panel-yetkinlik'){yetkinlikTaslak=null;renderYetkinlik('');}
+      }
+      alert(`✓ ${data.isciler.length} Mitarbeiter und ${data.isler.length} Positionen erfolgreich geladen!`);
+    } catch(err){
+      alert('Fehler beim Lesen der Datei: '+err.message);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value='';
+}
+
+// ============================================================
+//  VERİ SIFIRLAMA
+// ============================================================
+function dateiZuruecksetzen(){
+  if(!confirm('Alle Daten (Mitarbeiter, Positionen, Abwesenheiten) wirklich zurücksetzen?')) return;
+  localStorage.removeItem(LS_ISCILER);
+  localStorage.removeItem(LS_ISLER);
+  localStorage.removeItem(LS_ABW);
+  location.reload();
+}
+
+// ============================================================
+//  MODAL
+// ============================================================
+function closeModal(){document.getElementById('modal').style.display='none'}
+
+// ============================================================
+//  INIT
+// ============================================================
+//  INIT — localStorage'dan yükle, sonra render et
+(function init(){
+  lsLaden(); // önce kayıtlı veriyi yükle
+  // KK ve Acil görevlilere tüm pozisyonları ver (eğer eksikse)
+  const tumPozIds=ISLER.map(is=>is.id);
+  ISCILER.forEach(i=>{
+    if((i.gorev==='kk'||i.gorev==='acil')&&i.pozisyonlar.length!==tumPozIds.length){
+      i.pozisyonlar=[...tumPozIds];
+      i.maxPoz=tumPozIds.length;
+    }
+  });
+})();
+renderAbwListe();
+renderHeuteListe();
+updateStats();
+</script>
+</body>
+</html>
