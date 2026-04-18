@@ -933,41 +933,113 @@ function hlWorker(wid){
 }
 
 function planDrucken(){
-  const datum = new Date().toLocaleDateString('de-DE');
-  const titelBereich = document.getElementById('ozet-grid').innerHTML;
-  const planBereich = document.getElementById('tur-content').innerHTML;
-  const win = window.open('','_blank','width=1200,height=900');
+  if(!planData){alert('Bitte zuerst einen Arbeitsplan erstellen.');return;}
+  const datum=new Date().toLocaleDateString('de-DE');
+  const {turlar,kkler,aciller,acilRot}=planData;
+  const TC=['#1565C0','#2E7D32','#E65100','#6A1B9A'];
+  const TL=['1. Runde','2. Runde','3. Runde','4. Runde'];
+
+  // Satırları oluştur (renderAllTurs ile aynı mantık)
+  const rows=[];
+  ISLER.forEach(is=>{
+    rows.push({
+      label:is.isim,
+      cells:[1,2,3,4].map(t=>{
+        const i=turlar[t][is.id];
+        if(!i)return{text:'—',empty:true};
+        return{text:`${i.ad} ${i.soyad}`,badge:i.gorev==='acil'?'NE':''};
+      }),
+      type:'normal'
+    });
+  });
+  rows.push({sep:true,label:'QUALITÄTSKONTROLLE',bg:'#E8F5E9',color:'#1B5E20',bc:'#388E3C'});
+  kkler.forEach(kk=>{
+    rows.push({label:'QRK',cells:[1,2,3,4].map(()=>({text:`${kk.ad} ${kk.soyad}`,kkCell:true})),type:'kk'});
+  });
+  rows.push({sep:true,label:'NOTFALLEINSATZ',bg:'#FFF3E0',color:'#BF360C',bc:'#E65100'});
+  aciller.forEach(a=>{
+    rows.push({
+      label:'Springer',
+      cells:[1,2,3,4].map(t=>{
+        const nb=acilRot[t];
+        if(nb&&nb.id===a.id)return{text:`${a.ad} ${a.soyad}`,badge:'Bereitschaft',bold:true,acilNb:true};
+        let pos='—';
+        for(const is of ISLER){if(turlar[t][is.id]&&turlar[t][is.id].id===a.id){pos=is.isim;break}}
+        return{text:`${a.ad} ${a.soyad}`,sub:pos,badge:'NE',acilCell:true};
+      }),
+      type:'acil'
+    });
+  });
+
+  // Zebra sayacı (separator satırları saymadan)
+  let zebraIdx=0;
+  const rowsHtml=rows.map(row=>{
+    if(row.sep){
+      zebraIdx=0;
+      return `<tr><td colspan="5" style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 8px;background:${row.bg};color:${row.color};border-top:2px solid ${row.bc};border-bottom:1px solid ${row.bc}">${row.label}</td></tr>`;
+    }
+    const even=zebraIdx%2===0;
+    zebraIdx++;
+    let rowBg='#ffffff';
+    if(row.type==='kk') rowBg=even?'#F1F8E9':'#E8F5E9';
+    else if(row.type==='acil') rowBg=even?'#FFF8F0':'#FFF3E0';
+    else rowBg=even?'#ffffff':'#F5F7FA';
+    const cellsHtml=row.cells.map((c,ci)=>{
+      const bg=TC[ci]+'18'; // sütun rengi hafif tint
+      const color=c.kkCell?'#1B5E20':c.acilNb?'#BF360C':c.acilCell?'#795548':c.empty?'#aaa':'#111';
+      const fw=c.bold?'700':'400';
+      const fs=c.empty?'italic':'normal';
+      const badge=c.badge?` <span style="font-size:8px;opacity:.75">[${c.badge}]</span>`:'';
+      const sub=c.sub?`<br><span style="font-size:8px;color:#888">${c.sub}</span>`:'';
+      return `<td style="text-align:center;font-size:10px;font-weight:${fw};font-style:${fs};color:${color};background:${c.empty?'':bg};padding:4px 5px;border:1px solid #ddd">${c.text}${badge}${sub}</td>`;
+    }).join('');
+    return `<tr style="background:${rowBg}">
+      <td style="font-size:10px;font-weight:500;color:#333;padding:4px 8px;border:1px solid #ddd;background:${rowBg}">${row.label}</td>
+      ${cellsHtml}
+    </tr>`;
+  }).join('');
+
+  const heute=heuteDatumStr();
+  const krank=abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).length;
+  const urlaub=abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).length;
+  const ozetHtml=[
+    {n:ISCILER.length,l:'Gesamt',c:'#333'},
+    {n:planData.aktifler.length,l:'Aktiv',c:'#1565C0'},
+    {n:krank,l:'Krank',c:'#c62828'},
+    {n:urlaub,l:'Urlaub',c:'#e65100'},
+    {n:kkler.length,l:'QRK',c:'#2E7D32'},
+    {n:aciller.length,l:'Springer',c:'#6A1B9A'},
+  ].map(o=>`<div style="border:1px solid #ddd;border-radius:4px;padding:5px 12px;text-align:center;min-width:70px">
+    <div style="font-size:18px;font-weight:700;color:${o.c}">${o.n}</div>
+    <div style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.06em">${o.l}</div>
+  </div>`).join('');
+
+  const win=window.open('','_blank','width=900,height=1200');
   win.document.write(`<!DOCTYPE html><html lang="de"><head>
     <meta charset="UTF-8">
-    <title>Fabrik Arbeitsplan – ${datum}</title>
+    <title>Arbeitsplan – ${datum}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:11px;color:#111;background:#fff;padding:1.5cm}
-      h1{font-size:16px;font-weight:700;margin-bottom:4px;color:#1a1a2e}
-      .meta{font-size:10px;color:#666;margin-bottom:1rem;border-bottom:1px solid #ccc;padding-bottom:.5rem}
-      .ozet{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem}
-      .ozet-c{border:1px solid #ddd;border-radius:4px;padding:6px 12px;text-align:center;min-width:80px}
-      .ozet-n{font-size:18px;font-weight:700;color:#333}
-      .ozet-l{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em}
-      table{width:100%;border-collapse:collapse;font-size:10px}
-      th{padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #ccc}
-      td{padding:4px 8px;border:1px solid #e0e0e0;vertical-align:middle}
-      .poz-lbl{font-weight:600;color:#333}
-      .sec-div{font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border-top:2px solid}
-      .sec-kk{background:#E8F5E9;color:#1B5E20;border-top-color:#388E3C}
-      .sec-acil{background:#FFF3E0;color:#BF360C;border-top-color:#E65100}
-      .row-kk td{background:#F1F8E9}
-      .row-acil-g td{background:#FFF8F0}
-      tr:nth-child(even) td{background-color:rgba(0,0,0,.025)}
-      .row-kk:nth-child(even) td{background:#E8F5E9}
-      .row-acil-g:nth-child(even) td{background:#FFF3E0}
-      @media print{body{padding:.5cm}@page{margin:.5cm;size:A4 landscape}}
+      body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;background:#fff;padding:1.2cm}
+      @media print{body{padding:.6cm}@page{margin:.6cm;size:A4 portrait}}
     </style>
   </head><body>
-    <h1>Fabrik Arbeitsplan</h1>
-    <div class="meta">Erstellt am: ${datum} &nbsp;|&nbsp; System: Fabrik Arbeitsplanungssystem</div>
-    <div class="ozet">${titelBereich.replace(/class="ozet-n" style="[^"]*"/g,'class="ozet-n"').replace(/class="ozet-c"/g,'class="ozet-c"')}</div>
-    ${planBereich}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div>
+        <div style="font-size:17px;font-weight:700;color:#1a1a2e">Fabrik Arbeitsplan — Halle 111</div>
+        <div style="font-size:9px;color:#888;margin-top:2px">Erstellt am: ${datum} &nbsp;|&nbsp; Arbeitsplanungssystem</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 12px">${ozetHtml}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:6px 8px;font-size:10px;color:#555;border:1px solid #ccc;background:#f5f5f5">Arbeitsposition</th>
+          ${TC.map((c,i)=>`<th style="background:${c};color:#fff;text-align:center;font-size:10px;font-weight:700;padding:6px 5px;border:1px solid ${c};letter-spacing:.05em">${TL[i]}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
     <script>window.onload=function(){window.print()}<\/script>
   </body></html>`);
   win.document.close();
