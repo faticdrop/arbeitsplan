@@ -162,8 +162,8 @@ input,select{font-family:var(--sans)}
 .stat-box.clickable{cursor:pointer;border-radius:6px;padding:3px 6px;transition:background .15s}
 .stat-box.clickable:hover{background:rgba(255,255,255,.06)}
 .stat-popup{position:fixed;z-index:600;background:var(--surf);border:1px solid var(--bord);border-radius:10px;
-  padding:.9rem 1rem;min-width:200px;max-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5);
-  display:none;flex-direction:column;gap:6px}
+  padding:.9rem 1rem;min-width:240px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:none;flex-direction:column;gap:4px}
 .stat-popup.open{display:flex}
 .sp-title{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
 .sp-item{font-size:12px;padding:4px 8px;border-radius:5px;background:var(--surf2)}
@@ -760,42 +760,121 @@ function renderAllTurs(){
   document.getElementById('tur-content').innerHTML=h;
 }
 
+let spAktifTip=null;
+
 function statPopupAc(e,tip){
   e.stopPropagation();
   const popup=document.getElementById('stat-popup');
-  // Aynı butona tekrar basılınca kapat
-  if(popup.classList.contains('open')&&popup.dataset.tip===tip){
-    popup.classList.remove('open'); return;
-  }
-  popup.dataset.tip=tip;
-  const heute=heuteDatumStr();
-  let title='',color='',items=[];
-  if(tip==='krank'){
-    title='KRANK'; color='var(--danger)';
-    const ids=new Set(abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).map(e=>e.isciId));
-    items=ISCILER.filter(i=>ids.has(i.id)).map(i=>i.ad+' '+i.soyad);
-  } else if(tip==='urlaub'){
-    title='URLAUB'; color='var(--warn)';
-    const ids=new Set(abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).map(e=>e.isciId));
-    items=ISCILER.filter(i=>ids.has(i.id)).map(i=>i.ad+' '+i.soyad);
-  } else if(tip==='qrk'){
-    title='QRK'; color='var(--kk)';
-    items=ISCILER.filter(i=>i.gorev==='kk').map(i=>i.ad+' '+i.soyad);
-  }
-  popup.innerHTML=`<div class="sp-title" style="color:${color}">${title}</div>`+
-    (items.length ? items.map(n=>`<div class="sp-item">${n}</div>`).join('') :
-    `<div class="sp-empty">Keine Einträge</div>`);
-  // Butona göre konumlandır
+  if(popup.classList.contains('open')&&spAktifTip===tip){popup.classList.remove('open');spAktifTip=null;return;}
+  spAktifTip=tip;
   const rect=e.currentTarget.getBoundingClientRect();
-  popup.style.top=(rect.bottom+6)+'px';
+  popup.style.top=(rect.bottom+8)+'px';
   popup.style.right=(window.innerWidth-rect.right)+'px';
   popup.style.left='auto';
   popup.classList.add('open');
+  spRender();
 }
+
+function spRender(){
+  const popup=document.getElementById('stat-popup');
+  if(!popup.classList.contains('open'))return;
+  const tip=spAktifTip;
+  const heute=heuteDatumStr();
+  let title='',color='',entries=[];
+
+  if(tip==='krank'){
+    title='KRANK'; color='var(--danger)';
+    entries=abwesenheiten
+      .filter(a=>a.typ==='krank'&&a.von<=heute&&a.bis>=heute)
+      .map(a=>{const i=ISCILER.find(x=>x.id===a.isciId);return i?{id:a.id,name:i.ad+' '+i.soyad,extra:a.von.split('-').reverse().join('.')+' – '+a.bis.split('-').reverse().join('.')}:null})
+      .filter(Boolean);
+  } else if(tip==='urlaub'){
+    title='URLAUB'; color='var(--warn)';
+    entries=abwesenheiten
+      .filter(a=>a.typ==='urlaub'&&a.von<=heute&&a.bis>=heute)
+      .map(a=>{const i=ISCILER.find(x=>x.id===a.isciId);return i?{id:a.id,name:i.ad+' '+i.soyad,extra:a.von.split('-').reverse().join('.')+' – '+a.bis.split('-').reverse().join('.')}:null})
+      .filter(Boolean);
+  } else if(tip==='qrk'){
+    title='QRK'; color='var(--kk)';
+    entries=ISCILER.filter(i=>i.gorev==='kk').map(i=>({id:i.id,name:i.ad+' '+i.soyad,extra:''}));
+  }
+
+  const listHtml=entries.length
+    ? entries.map(en=>`
+        <div class="sp-item" style="display:flex;align-items:center;gap:6px">
+          <span style="flex:1">${en.name}</span>
+          ${en.extra?`<span style="font-size:9px;color:var(--muted);font-family:var(--mono)">${en.extra}</span>`:''}
+          <button onclick="spSil(${en.id});event.stopPropagation()" style="background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;line-height:1;padding:0 2px" title="Löschen">×</button>
+        </div>`).join('')
+    : `<div class="sp-empty">Keine Einträge</div>`;
+
+  const hasDate=tip==='krank'||tip==='urlaub';
+  const workerOpts=tip==='qrk'
+    ? ISCILER.filter(i=>i.gorev!=='kk').map(i=>`<option value="${i.id}">${i.ad} ${i.soyad}</option>`).join('')
+    : ISCILER.map(i=>`<option value="${i.id}">${i.ad} ${i.soyad}</option>`).join('');
+
+  popup.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="sp-title" style="color:${color};margin:0">${title}</div>
+      <button onclick="spFormToggle();event.stopPropagation()"
+        style="background:${color};border:none;border-radius:4px;color:#0f1117;font-size:11px;font-weight:600;padding:3px 8px;cursor:pointer">+ Hinzufügen</button>
+    </div>
+    <div id="sp-form" style="display:none;flex-direction:column;gap:6px;margin-bottom:8px;padding:8px;background:var(--surf2);border-radius:6px;border:1px solid var(--bord)">
+      <select id="sp-worker" class="inp inp-w" style="font-size:12px" onclick="event.stopPropagation()">${workerOpts}</select>
+      ${hasDate?`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Von</div>
+          <input type="date" id="sp-von" class="inp inp-w" style="font-size:12px" value="${heute}" onclick="event.stopPropagation()"></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">Bis</div>
+          <input type="date" id="sp-bis" class="inp inp-w" style="font-size:12px" value="${heute}" onclick="event.stopPropagation()"></div>
+      </div>`:''}
+      <button onclick="spEkle();event.stopPropagation()"
+        style="background:var(--accent);border:none;border-radius:4px;color:#fff;font-size:12px;font-weight:600;padding:5px;cursor:pointer">Speichern</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">${listHtml}</div>`;
+}
+
+function spFormToggle(){
+  const f=document.getElementById('sp-form');
+  if(f) f.style.display=f.style.display==='none'?'flex':'none';
+}
+
+function spEkle(){
+  const tip=spAktifTip;
+  const isciId=parseInt(document.getElementById('sp-worker').value);
+  if(tip==='krank'||tip==='urlaub'){
+    const von=document.getElementById('sp-von').value;
+    const bis=document.getElementById('sp-bis').value;
+    if(!von||!bis){alert('Bitte Datum eingeben');return;}
+    if(von>bis){alert('Von muss vor Bis liegen');return;}
+    abwesenheiten.push({id:abwNextId++,isciId,typ:tip,von,bis});
+    lsSpeichern();renderAbwListe();renderHeuteListe();updateStats();
+  } else if(tip==='qrk'){
+    const isci=ISCILER.find(i=>i.id===isciId);
+    if(isci){const p=ISLER.map(x=>x.id);isci.gorev='kk';isci.pozisyonlar=[...p];isci.maxPoz=p.length;}
+    lsSpeichern();updateStats();
+  }
+  spRender();
+}
+
+function spSil(id){
+  const tip=spAktifTip;
+  if(tip==='krank'||tip==='urlaub'){
+    abwesenheiten=abwesenheiten.filter(a=>a.id!==id);
+    lsSpeichern();renderAbwListe();renderHeuteListe();updateStats();
+  } else if(tip==='qrk'){
+    const isci=ISCILER.find(i=>i.id===id);
+    if(isci){isci.gorev='normal';isci.pozisyonlar=[];isci.maxPoz=0;}
+    lsSpeichern();updateStats();
+  }
+  spRender();
+}
+
 document.addEventListener('click',()=>{
   const p=document.getElementById('stat-popup');
-  if(p) p.classList.remove('open');
+  if(p){p.classList.remove('open');spAktifTip=null;}
 });
+document.getElementById('stat-popup').addEventListener('click',e=>e.stopPropagation());
 
 function hlWorker(wid){
   document.querySelectorAll('td.whl').forEach(td=>td.classList.remove('whl'));
