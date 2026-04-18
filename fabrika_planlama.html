@@ -628,21 +628,23 @@ function planOlustur(){
   for(let tur=1;tur<=4;tur++){
     turlar[tur]={};
     const pozAlindi=new Set();
-    const kalan=[...aktifler];
+    // Sadece pozisyonu tanımlı işçiler
+    const kalan=[...aktifler].filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0);
     while(kalan.length>0){
-      // Her adım: kalan işçileri aday sayısına göre değerlendir (MRV)
       const scored=kalan.map(w=>{
         const onceki=oncekiPoz[w.id]??null;
-        // Kural: bir öncekinden farklı pozisyon zorunlu
+        // Önce kural: bir önceki runde yaptığından farklı pozisyon
         let adaylar=w.pozisyonlar.filter(p=>!pozAlindi.has(p)&&p!==onceki);
-        // Sadece tek pozisyonu varsa (değiştiremez) fallback
+        // Tek pozisyonlu işçi veya tüm farklılar doluysa fallback (aynı pozisyon kabul)
         if(!adaylar.length) adaylar=w.pozisyonlar.filter(p=>!pozAlindi.has(p));
         return {w,adaylar,count:adaylar.length};
       });
-      const minCount=Math.min(...scored.map(s=>s.count));
-      if(minCount===0) break; // kalan işçiler için hiç boş pozisyon yok
-      // En az seçeneği olanlar arasından rastgele seç (eşitliği kır)
-      const kandids=scored.filter(s=>s.count===minCount);
+      // Yerleştirilebilenleri filtrele (count=0 olanları bu runde atla)
+      const placeable=scored.filter(s=>s.count>0);
+      if(!placeable.length) break;
+      // En az seçeneği olan (en kısıtlı) işçiyi seç — MRV heuristic
+      const minCount=Math.min(...placeable.map(s=>s.count));
+      const kandids=placeable.filter(s=>s.count===minCount);
       const chosen=kandids[Math.floor(Math.random()*kandids.length)];
       const secilen=chosen.adaylar[Math.floor(Math.random()*chosen.adaylar.length)];
       turlar[tur][secilen]=chosen.w;
