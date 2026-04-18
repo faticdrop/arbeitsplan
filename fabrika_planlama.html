@@ -737,7 +737,7 @@ function renderAllTurs(){
       const sub=cell.sub?`<br><span style="font-size:9px;color:var(--muted)">${cell.sub}</span>`:'';
       const noAtama=cell.cls==='no-atama-td'?'color:var(--muted);font-style:italic':'';
       const ttName=cell.fullName?`<div class="tt-wrap">${cell.text}${badge}${sub}<span class="tt">${cell.fullName}</span></div>`:cell.text+badge+sub;
-      const widAttr=cell.wid?` data-wid="${cell.wid}" onmouseenter="hlWorker(${cell.wid})" onmouseleave="hlClear()"` :'';
+      const widAttr=cell.wid?` data-wid="${cell.wid}" onclick="hlWorker(${cell.wid})" style="cursor:pointer"` :'';
       h+=`<td${widAttr} style="font-size:11px;text-align:center;${bold};${color};${noAtama};transition:background .1s">${ttName}</td>`;
     });
     h+='</tr>';
@@ -748,10 +748,8 @@ function renderAllTurs(){
 }
 
 function hlWorker(wid){
-  document.querySelectorAll(`td[data-wid="${wid}"]`).forEach(td=>td.classList.add('whl'));
-}
-function hlClear(){
   document.querySelectorAll('td.whl').forEach(td=>td.classList.remove('whl'));
+  document.querySelectorAll(`td[data-wid="${wid}"]`).forEach(td=>td.classList.add('whl'));
 }
 
 function planDrucken(){
