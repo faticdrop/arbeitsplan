@@ -403,7 +403,7 @@ function gorevColor(g){
 // ============================================================
 function updateStats(){
   const devre=getHeuteAbwesendeIds();
-  const aktif=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk').length;
+  const aktif=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk'&&i.gorev!=='acil'&&i.gorev!=='izin_kadrosu').length;
   const heute=heuteDatumStr();
   document.getElementById('s-top').textContent=ISCILER.length;
   document.getElementById('s-akt').textContent=aktif;
@@ -586,21 +586,28 @@ function planOlustur(){
   const devre=getHeuteAbwesendeIds();
   const kkler=ISCILER.filter(i=>i.gorev==='kk');
   const aciller=ISCILER.filter(i=>i.gorev==='acil'&&!devre.has(i.id));
-  const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk');
+  // QRK, Springer, Krank, Urlaub, Urlaubspool hariç — sadece aktif üretim personeli
+  const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk'&&i.gorev!=='acil'&&i.gorev!=='izin_kadrosu');
 
   const turlar={};
+  const oncekiPoz={}; // her işçinin bir önceki rundaki pozisyonu
   for(let tur=1;tur<=4;tur++){
     turlar[tur]={};
-    const atanan=new Set();
-    const pozlar=shuffle(ISLER.map(is=>is.id));
-    for(const poz of pozlar){
-      const uyg=aktifler.filter(i=>{
-        if(atanan.has(i.id))return false;
-        if(!i.pozisyonlar.includes(poz))return false;
-        for(let t=1;t<tur;t++)if(turlar[t][poz]&&turlar[t][poz].id===i.id)return false;
-        return true;
-      });
-      if(uyg.length){const s=uyg[Math.floor(Math.random()*uyg.length)];turlar[tur][poz]=s;atanan.add(s.id)}
+    const pozAlindi=new Set();
+    // İşçi bazlı döngü: her işçi her runde mutlaka atanır
+    const shuffled=shuffle([...aktifler]);
+    for(const worker of shuffled){
+      const onceki=oncekiPoz[worker.id]??null;
+      // Önce ardışık kısıtla dene: bir önceki runde aynı pozisyon yasak
+      let adaylar=worker.pozisyonlar.filter(p=>!pozAlindi.has(p)&&p!==onceki);
+      // Aday yoksa kısıtı kaldır (tıkanmayı önle)
+      if(!adaylar.length) adaylar=worker.pozisyonlar.filter(p=>!pozAlindi.has(p));
+      if(adaylar.length){
+        const secilen=adaylar[Math.floor(Math.random()*adaylar.length)];
+        turlar[tur][secilen]=worker;
+        pozAlindi.add(secilen);
+        oncekiPoz[worker.id]=secilen;
+      }
     }
   }
 
