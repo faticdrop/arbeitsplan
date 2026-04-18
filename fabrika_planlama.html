@@ -179,7 +179,8 @@ input,select{font-family:var(--sans)}
       <div class="stat-box"><div class="stat-num" style="color:var(--accent)" id="s-akt">—</div><div class="stat-lbl">Aktiv</div></div>
       <div class="stat-box"><div class="stat-num" style="color:var(--danger)" id="s-has">0</div><div class="stat-lbl">Krank</div></div>
       <div class="stat-box"><div class="stat-num" style="color:var(--warn)" id="s-izn">0</div><div class="stat-lbl">Urlaub</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:var(--muted)" id="s-ik">0</div><div class="stat-lbl">Urlaubspool</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--kk)" id="s-qrk">0</div><div class="stat-lbl">QRK</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--acil)" id="s-spr">0</div><div class="stat-lbl">Springer</div></div>
     </div>
   </div>
 </div>
@@ -408,7 +409,8 @@ function updateStats(){
   document.getElementById('s-akt').textContent=aktif;
   document.getElementById('s-has').textContent=abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).length;
   document.getElementById('s-izn').textContent=abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).length;
-  document.getElementById('s-ik').textContent=ISCILER.filter(i=>i.gorev==='izin_kadrosu').length;
+  document.getElementById('s-qrk').textContent=ISCILER.filter(i=>i.gorev==='kk').length;
+  document.getElementById('s-spr').textContent=ISCILER.filter(i=>i.gorev==='acil').length;
 }
 
 // ============================================================
