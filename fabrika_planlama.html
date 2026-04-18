@@ -479,11 +479,13 @@ function abwHinzufuegen(){
     <div class="modal-row"><div class="modal-lbl">Mitarbeiter</div>
       <select class="inp inp-w" id="m-abw-isci">${opts}</select></div>
     <div class="modal-row"><div class="modal-lbl">Grund</div>
-      <select class="inp inp-w" id="m-abw-typ">
+      <select class="inp inp-w" id="m-abw-typ" onchange="abwTypToggle(this.value)">
         <option value="krank">Krank (Arbeitsunfähig)</option>
         <option value="urlaub">Urlaub</option>
+        <option value="qrk">QRK (Qualitätskontrolle)</option>
+        <option value="springer">Springer (Notfalleinsatz)</option>
       </select></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div id="m-abw-datum-wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="modal-row"><div class="modal-lbl">Von (Datum)</div>
         <input type="date" class="inp inp-w" id="m-abw-von" value="${heute}"></div>
       <div class="modal-row"><div class="modal-lbl">Bis (Datum)</div>
@@ -495,9 +497,26 @@ function abwHinzufuegen(){
   document.getElementById('modal').style.display='flex';
 }
 
+function abwTypToggle(val){
+  const wrap=document.getElementById('m-abw-datum-wrap');
+  if(wrap) wrap.style.display=(val==='qrk'||val==='springer')?'none':'grid';
+}
+
 function abwSpeichern(){
   const isciId=parseInt(document.getElementById('m-abw-isci').value);
   const typ=document.getElementById('m-abw-typ').value;
+  if(typ==='qrk'||typ==='springer'){
+    const isci=ISCILER.find(i=>i.id===isciId);
+    if(isci){
+      const tumPozIds=ISLER.map(is=>is.id);
+      isci.gorev=typ==='qrk'?'kk':'acil';
+      isci.pozisyonlar=[...tumPozIds];
+      isci.maxPoz=tumPozIds.length;
+    }
+    closeModal();renderAbwListe();renderHeuteListe();updateStats();
+    lsSpeichern();
+    return;
+  }
   const von=document.getElementById('m-abw-von').value;
   const bis=document.getElementById('m-abw-bis').value;
   if(!von||!bis){alert('Bitte Datum eingeben');return}
