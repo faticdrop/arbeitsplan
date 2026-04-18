@@ -624,24 +624,31 @@ function planOlustur(){
   const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk'&&i.gorev!=='acil'&&i.gorev!=='izin_kadrosu');
 
   const turlar={};
-  const oncekiPoz={}; // her işçinin bir önceki rundaki pozisyonu
+  const oncekiPoz={};
   for(let tur=1;tur<=4;tur++){
     turlar[tur]={};
     const pozAlindi=new Set();
-    // İşçi bazlı döngü: her işçi her runde mutlaka atanır
-    const shuffled=shuffle([...aktifler]);
-    for(const worker of shuffled){
-      const onceki=oncekiPoz[worker.id]??null;
-      // Önce ardışık kısıtla dene: bir önceki runde aynı pozisyon yasak
-      let adaylar=worker.pozisyonlar.filter(p=>!pozAlindi.has(p)&&p!==onceki);
-      // Aday yoksa kısıtı kaldır (tıkanmayı önle)
-      if(!adaylar.length) adaylar=worker.pozisyonlar.filter(p=>!pozAlindi.has(p));
-      if(adaylar.length){
-        const secilen=adaylar[Math.floor(Math.random()*adaylar.length)];
-        turlar[tur][secilen]=worker;
-        pozAlindi.add(secilen);
-        oncekiPoz[worker.id]=secilen;
-      }
+    const kalan=[...aktifler];
+    while(kalan.length>0){
+      // Her adım: kalan işçileri aday sayısına göre değerlendir (MRV)
+      const scored=kalan.map(w=>{
+        const onceki=oncekiPoz[w.id]??null;
+        // Kural: bir öncekinden farklı pozisyon zorunlu
+        let adaylar=w.pozisyonlar.filter(p=>!pozAlindi.has(p)&&p!==onceki);
+        // Sadece tek pozisyonu varsa (değiştiremez) fallback
+        if(!adaylar.length) adaylar=w.pozisyonlar.filter(p=>!pozAlindi.has(p));
+        return {w,adaylar,count:adaylar.length};
+      });
+      const minCount=Math.min(...scored.map(s=>s.count));
+      if(minCount===0) break; // kalan işçiler için hiç boş pozisyon yok
+      // En az seçeneği olanlar arasından rastgele seç (eşitliği kır)
+      const kandids=scored.filter(s=>s.count===minCount);
+      const chosen=kandids[Math.floor(Math.random()*kandids.length)];
+      const secilen=chosen.adaylar[Math.floor(Math.random()*chosen.adaylar.length)];
+      turlar[tur][secilen]=chosen.w;
+      pozAlindi.add(secilen);
+      oncekiPoz[chosen.w.id]=secilen;
+      kalan.splice(kalan.indexOf(chosen.w),1);
     }
   }
 
