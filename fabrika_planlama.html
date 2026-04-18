@@ -158,6 +158,9 @@ input,select{font-family:var(--sans)}
 ::-webkit-scrollbar-track{background:var(--surf)}
 ::-webkit-scrollbar-thumb{background:var(--bord);border-radius:3px}
 
+/* WORKER HIGHLIGHT */
+td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);outline-offset:-2px;border-radius:3px}
+
 /* TOOLTIP */
 .tt-wrap{position:relative;display:inline-block;width:100%}
 .tt-wrap .tt{
@@ -668,7 +671,7 @@ function renderAllTurs(){
         const i=turlar[t][is.id];
         if(!i) return {text:'—',cls:'no-atama-td'};
         const isAcil=i.gorev==='acil';
-        return {text:`${i.ad} ${i.soyad}`, fullName:`${i.ad} ${i.soyad}`, badge: isAcil?'NE':'', cls: isAcil?'acil-cell':''};
+        return {text:`${i.ad} ${i.soyad}`, fullName:`${i.ad} ${i.soyad}`, wid:i.id, badge: isAcil?'NE':'', cls: isAcil?'acil-cell':''};
       }),
       rowType:'normal'
     });
@@ -679,7 +682,7 @@ function renderAllTurs(){
   kkler.forEach(kk=>{
     rows.push({
       label:'Qualitätskontrolle',
-      cells:[1,2,3,4].map(()=>({text:`${kk.ad} ${kk.soyad}`, fullName:`${kk.ad} ${kk.soyad}`, badge:'QK', cls:'kk-cell'})),
+      cells:[1,2,3,4].map(()=>({text:`${kk.ad} ${kk.soyad}`, fullName:`${kk.ad} ${kk.soyad}`, wid:kk.id, badge:'QK', cls:'kk-cell'})),
       rowType:'kk'
     });
   });
@@ -692,12 +695,12 @@ function renderAllTurs(){
       cells:[1,2,3,4].map(t=>{
         const nobetci=acilRot[t];
         if(nobetci&&nobetci.id===a.id){
-          return {text:`${a.ad} ${a.soyad}`, fullName:`${a.ad} ${a.soyad}`, badge:'Bereitschaft', cls:'acil-nobetci-cell', bold:true};
+          return {text:`${a.ad} ${a.soyad}`, fullName:`${a.ad} ${a.soyad}`, wid:a.id, badge:'Bereitschaft', cls:'acil-nobetci-cell', bold:true};
         }
         // Normal işte nerede?
         let pAdi='—';
         for(const is of ISLER){if(turlar[t][is.id]&&turlar[t][is.id].id===a.id){pAdi=is.isim;break}}
-        return {text:`${a.ad} ${a.soyad}`, fullName:`${a.ad} ${a.soyad}`, sub:pAdi, badge:'NE', cls:'acil-cell'};
+        return {text:`${a.ad} ${a.soyad}`, fullName:`${a.ad} ${a.soyad}`, wid:a.id, sub:pAdi, badge:'NE', cls:'acil-cell'};
       }),
       rowType:'acil'
     });
@@ -734,13 +737,21 @@ function renderAllTurs(){
       const sub=cell.sub?`<br><span style="font-size:9px;color:var(--muted)">${cell.sub}</span>`:'';
       const noAtama=cell.cls==='no-atama-td'?'color:var(--muted);font-style:italic':'';
       const ttName=cell.fullName?`<div class="tt-wrap">${cell.text}${badge}${sub}<span class="tt">${cell.fullName}</span></div>`:cell.text+badge+sub;
-      h+=`<td style="font-size:11px;text-align:center;${bold};${color};${noAtama}">${ttName}</td>`;
+      const widAttr=cell.wid?` data-wid="${cell.wid}" onmouseenter="hlWorker(${cell.wid})" onmouseleave="hlClear()"` :'';
+      h+=`<td${widAttr} style="font-size:11px;text-align:center;${bold};${color};${noAtama};transition:background .1s">${ttName}</td>`;
     });
     h+='</tr>';
   });
 
   h+='</tbody></table></div>';
   document.getElementById('tur-content').innerHTML=h;
+}
+
+function hlWorker(wid){
+  document.querySelectorAll(`td[data-wid="${wid}"]`).forEach(td=>td.classList.add('whl'));
+}
+function hlClear(){
+  document.querySelectorAll('td.whl').forEach(td=>td.classList.remove('whl'));
 }
 
 function planDrucken(){
