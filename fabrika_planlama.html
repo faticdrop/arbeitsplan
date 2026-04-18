@@ -158,6 +158,17 @@ input,select{font-family:var(--sans)}
 ::-webkit-scrollbar-track{background:var(--surf)}
 ::-webkit-scrollbar-thumb{background:var(--bord);border-radius:3px}
 
+/* STAT POPUP */
+.stat-box.clickable{cursor:pointer;border-radius:6px;padding:3px 6px;transition:background .15s}
+.stat-box.clickable:hover{background:rgba(255,255,255,.06)}
+.stat-popup{position:fixed;z-index:600;background:var(--surf);border:1px solid var(--bord);border-radius:10px;
+  padding:.9rem 1rem;min-width:200px;max-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:none;flex-direction:column;gap:6px}
+.stat-popup.open{display:flex}
+.sp-title{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+.sp-item{font-size:12px;padding:4px 8px;border-radius:5px;background:var(--surf2)}
+.sp-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 0}
+
 /* WORKER HIGHLIGHT */
 td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);outline-offset:-2px;border-radius:3px}
 
@@ -197,9 +208,9 @@ td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);
     <div class="stats-row">
       <div class="stat-box"><div class="stat-num" style="color:var(--text)" id="s-top">0</div><div class="stat-lbl">Gesamt</div></div>
       <div class="stat-box"><div class="stat-num" style="color:var(--accent)" id="s-akt">—</div><div class="stat-lbl">Aktiv</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:var(--danger)" id="s-has">0</div><div class="stat-lbl">Krank</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:var(--warn)" id="s-izn">0</div><div class="stat-lbl">Urlaub</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:var(--kk)" id="s-qrk">0</div><div class="stat-lbl">QRK</div></div>
+      <div class="stat-box clickable" onclick="statPopupAc(event,'krank')"><div class="stat-num" style="color:var(--danger)" id="s-has">0</div><div class="stat-lbl" style="color:var(--danger)">Krank ▾</div></div>
+      <div class="stat-box clickable" onclick="statPopupAc(event,'urlaub')"><div class="stat-num" style="color:var(--warn)" id="s-izn">0</div><div class="stat-lbl" style="color:var(--warn)">Urlaub ▾</div></div>
+      <div class="stat-box clickable" onclick="statPopupAc(event,'qrk')"><div class="stat-num" style="color:var(--kk)" id="s-qrk">0</div><div class="stat-lbl" style="color:var(--kk)">QRK ▾</div></div>
       <div class="stat-box"><div class="stat-num" style="color:var(--acil)" id="s-spr">0</div><div class="stat-lbl">Springer</div></div>
     </div>
   </div>
@@ -352,6 +363,8 @@ td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);
 </div><!-- /content -->
 
 <!-- MODAL -->
+<div id="stat-popup" class="stat-popup"></div>
+
 <div class="modal-overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-title" id="modal-title">Yeni Personel</div>
@@ -746,6 +759,43 @@ function renderAllTurs(){
   h+='</tbody></table></div>';
   document.getElementById('tur-content').innerHTML=h;
 }
+
+function statPopupAc(e,tip){
+  e.stopPropagation();
+  const popup=document.getElementById('stat-popup');
+  // Aynı butona tekrar basılınca kapat
+  if(popup.classList.contains('open')&&popup.dataset.tip===tip){
+    popup.classList.remove('open'); return;
+  }
+  popup.dataset.tip=tip;
+  const heute=heuteDatumStr();
+  let title='',color='',items=[];
+  if(tip==='krank'){
+    title='KRANK'; color='var(--danger)';
+    const ids=new Set(abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).map(e=>e.isciId));
+    items=ISCILER.filter(i=>ids.has(i.id)).map(i=>i.ad+' '+i.soyad);
+  } else if(tip==='urlaub'){
+    title='URLAUB'; color='var(--warn)';
+    const ids=new Set(abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).map(e=>e.isciId));
+    items=ISCILER.filter(i=>ids.has(i.id)).map(i=>i.ad+' '+i.soyad);
+  } else if(tip==='qrk'){
+    title='QRK'; color='var(--kk)';
+    items=ISCILER.filter(i=>i.gorev==='kk').map(i=>i.ad+' '+i.soyad);
+  }
+  popup.innerHTML=`<div class="sp-title" style="color:${color}">${title}</div>`+
+    (items.length ? items.map(n=>`<div class="sp-item">${n}</div>`).join('') :
+    `<div class="sp-empty">Keine Einträge</div>`);
+  // Butona göre konumlandır
+  const rect=e.currentTarget.getBoundingClientRect();
+  popup.style.top=(rect.bottom+6)+'px';
+  popup.style.right=(window.innerWidth-rect.right)+'px';
+  popup.style.left='auto';
+  popup.classList.add('open');
+}
+document.addEventListener('click',()=>{
+  const p=document.getElementById('stat-popup');
+  if(p) p.classList.remove('open');
+});
 
 function hlWorker(wid){
   document.querySelectorAll('td.whl').forEach(td=>td.classList.remove('whl'));
