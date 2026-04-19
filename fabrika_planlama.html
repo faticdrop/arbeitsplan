@@ -213,6 +213,7 @@ td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);
       <div class="stat-box clickable" onclick="statPopupAc(event,'urlaub')"><div class="stat-num" style="color:var(--warn)" id="s-izn">0</div><div class="stat-lbl" style="color:var(--warn)">Urlaub ▾</div></div>
       <div class="stat-box clickable" onclick="statPopupAc(event,'qrk')"><div class="stat-num" style="color:var(--kk)" id="s-qrk">0</div><div class="stat-lbl" style="color:var(--kk)">QRK ▾</div></div>
       <div class="stat-box clickable" onclick="statPopupAc(event,'springer')"><div class="stat-num" style="color:var(--acil)" id="s-spr">0</div><div class="stat-lbl" style="color:var(--acil)">Springer ▾</div></div>
+      <div class="stat-box clickable" onclick="statPopupAc(event,'fazla')"><div class="stat-num" style="color:var(--muted)" id="s-fzl">—</div><div class="stat-lbl" style="color:var(--muted)">Nicht verplant ▾</div></div>
     </div>
   </div>
 </div>
@@ -445,6 +446,7 @@ function updateStats(){
   document.getElementById('s-izn').textContent=abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).length;
   document.getElementById('s-qrk').textContent=ISCILER.filter(i=>i.gorev==='kk').length;
   document.getElementById('s-spr').textContent=ISCILER.filter(i=>i.gorev==='acil').length;
+  document.getElementById('s-fzl').textContent=planData?planData.fazlaPersonel.length:'—';
 }
 
 // ============================================================
@@ -700,6 +702,7 @@ function planOlustur(){
     <div class="ozet-c"><div class="ozet-n" style="color:var(--muted)">${ISCILER.filter(i=>i.gorev==='izin_kadrosu').length}</div><div class="ozet-l">Urlaubspool</div></div>
   `;
 
+  document.getElementById('s-fzl').textContent=fazlaPersonel.length;
   renderAllTurs();
   document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -856,6 +859,20 @@ function spRender(){
   } else if(tip==='springer'){
     title='SPRINGER'; color='var(--acil)';
     entries=ISCILER.filter(i=>i.gorev==='acil').map(i=>({id:i.id,name:i.ad+' '+i.soyad,extra:''}));
+  } else if(tip==='fazla'){
+    title='NICHT VERPLANT'; color='var(--muted)';
+    // Sadece görüntüleme — plan oluşturulduktan sonra dolar
+    const fzl=planData?.fazlaPersonel||[];
+    const readList=fzl.length
+      ? fzl.map(w=>`<div class="sp-item" style="display:flex;align-items:center;gap:6px">
+          <span style="flex:1">${w.ad} ${w.soyad}</span>
+          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">${w.pozisyonlar.length} Pos.</span>
+        </div>`).join('')
+      : `<div class="sp-empty">Alle Mitarbeiter verplant</div>`;
+    popup.innerHTML=`
+      <div class="sp-title" style="color:${color};margin-bottom:8px">${title} (${fzl.length})</div>
+      <div style="display:flex;flex-direction:column;gap:5px">${readList}</div>`;
+    return;
   }
 
   const listHtml=entries.length
