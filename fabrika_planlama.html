@@ -569,6 +569,11 @@ function abwLoeschen(abwId){
 function renderAbwListe(){
   const el=document.getElementById('abw-liste');
   const leer=document.getElementById('abw-leer');
+  // Tarihi geçmiş kayıtları otomatik sil (bis < bugün)
+  const heute=heuteDatumStr();
+  const onceki=abwesenheiten.length;
+  abwesenheiten=abwesenheiten.filter(e=>e.bis>=heute);
+  if(abwesenheiten.length!==onceki) lsSpeichern();
   const sorted=[...abwesenheiten].sort((a,b)=>a.von.localeCompare(b.von));
   if(!sorted.length){el.innerHTML='';leer.style.display='block';return}
   leer.style.display='none';
@@ -587,7 +592,6 @@ function renderAbwListe(){
       <button class="btn-icon" onclick="abwLoeschen(${e.id})" title="Löschen">×</button>
     </div>`;
   }).join('');
-  const heute=heuteDatumStr();
   const krankH=abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=heute&&e.bis>=heute).length;
   const urlaubH=abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=heute&&e.bis>=heute).length;
   document.getElementById('abw-krank-cnt').textContent=krankH+' Krank';
