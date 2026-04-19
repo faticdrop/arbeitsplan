@@ -331,8 +331,15 @@ td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);
       <button class="btn btn-primary btn-sm" id="yet-kaydet-btn" onclick="yetkinlikKaydet()" style="display:none">✓ Speichern &amp; Anwenden</button>
     </div>
     <div class="fbar">
-      <input class="inp inp-sm" type="text" placeholder="Name filtern..." oninput="renderYetkinlik(this.value)" style="width:160px">
-      <span id="yet-poz-bilgi" style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-left:6px"></span>
+      <input class="inp inp-sm" id="yet-ara" type="text" placeholder="Name filtern..." oninput="renderYetkinlik()" style="width:160px">
+      <select class="inp inp-sm" id="yet-poz-filtre" onchange="renderYetkinlik()" style="width:155px;margin-left:6px">
+        <option value="">Alle Qualifikationen</option>
+        <option value="1-3">1 – 3 Positionen</option>
+        <option value="4-6">4 – 6 Positionen</option>
+        <option value="7-9">7 – 9 Positionen</option>
+        <option value="10+">10+ Positionen</option>
+      </select>
+      <span id="yet-poz-bilgi" style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-left:8px"></span>
       <span style="font-size:11px;color:var(--muted);margin-left:4px">Klicken → hinzufügen/entfernen · QK und NE automatisch alle Positionen ✓</span>
     </div>
     <div class="poz-table-wrap">
@@ -462,7 +469,7 @@ function showTab(tab,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('panel-'+tab).classList.add('active');
-  if(tab==='yetkinlik'){yetkinlikTaslak=null;renderYetkinlik('');}
+  if(tab==='yetkinlik'){yetkinlikTaslak=null;renderYetkinlik();}
   if(tab==='personel'){personelTaslak=iscilerDeepCopy(ISCILER);renderPersonelTable('');}
   if(tab==='isler'){islerTaslak=ISLER.map(is=>({...is}));renderIsGrid();}
   if(tab==='devamsizlik'){renderAbwListe();renderHeuteListe();}
@@ -1263,23 +1270,39 @@ function yetMarkDirty(){
   document.getElementById('yet-saved-msg').style.display='none';
 }
 
-function renderYetkinlik(search=''){
-  // Taslağı ISCILER'den init et
+function renderYetkinlik(){
   if(!yetkinlikTaslak){
     yetkinlikTaslak={};
     ISCILER.forEach(i=>{yetkinlikTaslak[i.id]=new Set(i.pozisyonlar)});
   }
-  const s=search.toLowerCase();
-  const list=ISCILER.filter(i=>!s||(i.ad+' '+i.soyad).toLowerCase().includes(s));
-  // Arama kutusunun yanında pozisyon sayısı bilgisi
+  const araEl=document.getElementById('yet-ara');
+  const filtreEl=document.getElementById('yet-poz-filtre');
+  const s=(araEl?araEl.value:'').toLowerCase();
+  const filtre=filtreEl?filtreEl.value:'';
+  let list=ISCILER.filter(i=>!s||(i.ad+' '+i.soyad).toLowerCase().includes(s));
+  if(filtre){
+    list=list.filter(i=>{
+      const isKkAcil=i.gorev==='kk'||i.gorev==='acil';
+      const cnt=isKkAcil?ISLER.length:(yetkinlikTaslak[i.id]?.size||i.pozisyonlar?.length||0);
+      if(filtre==='1-3') return cnt>=1&&cnt<=3;
+      if(filtre==='4-6') return cnt>=4&&cnt<=6;
+      if(filtre==='7-9') return cnt>=7&&cnt<=9;
+      if(filtre==='10+') return cnt>=10;
+      return true;
+    });
+  }
   const bilgiEl=document.getElementById('yet-poz-bilgi');
   if(bilgiEl){
     if(list.length===1){
       const tek=list[0];
+      const isKkAcil=tek.gorev==='kk'||tek.gorev==='acil';
       const pSet=yetkinlikTaslak[tek.id]||new Set(tek.pozisyonlar);
-      bilgiEl.textContent=`${tek.ad} ${tek.soyad} · ${pSet.size} Positionen`;
+      const pozIds=isKkAcil?ISLER.map(is=>is.id):ISLER.filter(is=>pSet.has(is.id)).map(is=>is.id);
+      const chips=pozIds.slice(0,10).map(id=>`<span style="background:rgba(56,217,169,.15);border-radius:3px;padding:1px 5px;font-size:10px;white-space:nowrap">${id}</span>`).join(' ');
+      const more=pozIds.length>10?` <span style="color:var(--muted)">+${pozIds.length-10}</span>`:'';
+      bilgiEl.innerHTML=`<strong>${tek.ad} ${tek.soyad}</strong> · <span style="color:var(--danger)">${pozIds.length} Pos</span> · ${chips}${more}`;
     } else {
-      bilgiEl.textContent='';
+      bilgiEl.innerHTML='';
     }
   }
   const table=document.getElementById('yetkinlik-table');
@@ -1334,7 +1357,7 @@ function yetkinlikKaydet(){
   msg.style.display='block';
   setTimeout(()=>msg.style.display='none',3000);
   // Matrisi yenile
-  renderYetkinlik(document.querySelector('#panel-yetkinlik input').value);
+  renderYetkinlik();
   updateStats();
   if(planData) renderAllTurs();
   lsSpeichern();
@@ -1691,7 +1714,7 @@ function datenImportieren(input){
       if(aktifPanel){
         if(aktifPanel.id==='panel-personel'){personelTaslak=iscilerDeepCopy(ISCILER);renderPersonelTable('');}
         if(aktifPanel.id==='panel-isler'){islerTaslak=ISLER.map(is=>({...is}));renderIsGrid();}
-        if(aktifPanel.id==='panel-yetkinlik'){yetkinlikTaslak=null;renderYetkinlik('');}
+        if(aktifPanel.id==='panel-yetkinlik'){yetkinlikTaslak=null;renderYetkinlik();}
       }
       alert(`✓ ${data.isciler.length} Mitarbeiter und ${data.isler.length} Positionen erfolgreich geladen!`);
     } catch(err){
