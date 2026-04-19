@@ -631,7 +631,8 @@ function planOlustur(){
   const kkler=ISCILER.filter(i=>i.gorev==='kk');
   const aciller=ISCILER.filter(i=>i.gorev==='acil'&&!devre.has(i.id));
   // QRK, Springer, Krank, Urlaub, Urlaubspool hariç — sadece aktif üretim personeli
-  const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk'&&i.gorev!=='acil'&&i.gorev!=='izin_kadrosu');
+  // Sadece gorev==='normal' VE bugün devredışı olmayan işçiler
+  const aktifler=ISCILER.filter(i=>i.gorev==='normal'&&!devre.has(i.id));
 
   // 2 skill'li işçiler için günlük dönüşüm durumu (her yeni gün parite değişir)
   const LS_ROT='fab_rotation_v1';
