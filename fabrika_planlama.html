@@ -726,7 +726,7 @@ function renderAllTurs(){
         const i=turlar[t][is.id];
         if(!i) return {text:'—',cls:'no-atama-td'};
         const isAcil=i.gorev==='acil';
-        return {text:`${i.ad} ${i.soyad}`, fullName:`${i.ad} ${i.soyad}`, wid:i.id, badge: isAcil?'NE':'', cls: isAcil?'acil-cell':''};
+        return {text:`${i.ad} ${i.soyad} (${i.pozisyonlar?.length||0})`, fullName:`${i.ad} ${i.soyad}`, wid:i.id, badge: isAcil?'NE':'', cls: isAcil?'acil-cell':''};
       }),
       rowType:'normal'
     });
