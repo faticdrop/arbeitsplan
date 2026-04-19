@@ -332,6 +332,7 @@ td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);
     </div>
     <div class="fbar">
       <input class="inp inp-sm" type="text" placeholder="Name filtern..." oninput="renderYetkinlik(this.value)" style="width:160px">
+      <span id="yet-poz-bilgi" style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-left:6px"></span>
       <span style="font-size:11px;color:var(--muted);margin-left:4px">Klicken → hinzufügen/entfernen · QK und NE automatisch alle Positionen ✓</span>
     </div>
     <div class="poz-table-wrap">
@@ -1270,6 +1271,17 @@ function renderYetkinlik(search=''){
   }
   const s=search.toLowerCase();
   const list=ISCILER.filter(i=>!s||(i.ad+' '+i.soyad).toLowerCase().includes(s));
+  // Arama kutusunun yanında pozisyon sayısı bilgisi
+  const bilgiEl=document.getElementById('yet-poz-bilgi');
+  if(bilgiEl){
+    if(list.length===1){
+      const tek=list[0];
+      const pSet=yetkinlikTaslak[tek.id]||new Set(tek.pozisyonlar);
+      bilgiEl.textContent=`${tek.ad} ${tek.soyad} · ${pSet.size} Positionen`;
+    } else {
+      bilgiEl.textContent='';
+    }
+  }
   const table=document.getElementById('yetkinlik-table');
   let h='<thead><tr><th class="isim-col">Ad Soyad</th>';
   ISLER.forEach(is=>{h+=`<th title="${is.isim}" style="font-size:9px">${is.id}</th>`});
