@@ -268,6 +268,10 @@ td.whl{background:rgba(56,217,169,.18)!important;outline:2px solid var(--green);
 <!-- TUR PLANI -->
 <div class="panel" id="panel-plan">
   <div class="ozet-grid" id="ozet-grid"></div>
+  <div id="fazla-liste-panel" style="display:none;background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:.75rem 1rem;margin-top:-0.5rem;margin-bottom:1rem">
+    <div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem;font-family:var(--mono)">NICHT VERPLANT — Reserve</div>
+    <div id="fazla-liste-icerik" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:.75rem">
     <button class="btn btn-primary btn-sm" onclick="planDrucken()" style="gap:6px;display:flex;align-items:center">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -699,7 +703,7 @@ function planOlustur(){
     <div class="ozet-c"><div class="ozet-n" style="color:var(--acil)">${aciller.length}</div><div class="ozet-l">Notfalleinsatz</div></div>
     <div class="ozet-c"><div class="ozet-n" style="color:var(--danger)">${(()=>{const h=heuteDatumStr();return abwesenheiten.filter(e=>e.typ==='krank'&&e.von<=h&&e.bis>=h).length})()}</div><div class="ozet-l">Krank</div></div>
     <div class="ozet-c"><div class="ozet-n" style="color:var(--warn)">${(()=>{const h=heuteDatumStr();return abwesenheiten.filter(e=>e.typ==='urlaub'&&e.von<=h&&e.bis>=h).length})()}</div><div class="ozet-l">Urlaub</div></div>
-    <div class="ozet-c"><div class="ozet-n" style="color:var(--muted)">${ISCILER.filter(i=>i.gorev==='izin_kadrosu').length}</div><div class="ozet-l">Urlaubspool</div></div>
+    <div class="ozet-c" onclick="toggleFazlaListe()" style="cursor:pointer;border-color:var(--muted)"><div class="ozet-n" style="color:var(--muted)">${fazlaPersonel.length}</div><div class="ozet-l" style="color:var(--muted)">Nicht verplant ▾</div></div>
   `;
 
   document.getElementById('s-fzl').textContent=fazlaPersonel.length;
@@ -815,6 +819,22 @@ function renderAllTurs(){
 
   h+='</tbody></table></div>';
   document.getElementById('tur-content').innerHTML=h;
+}
+
+function toggleFazlaListe(){
+  const panel=document.getElementById('fazla-liste-panel');
+  const icerik=document.getElementById('fazla-liste-icerik');
+  const open=panel.style.display==='none';
+  if(open){
+    const fzl=planData?.fazlaPersonel||[];
+    icerik.innerHTML=fzl.length
+      ? fzl.map(w=>`<div style="background:var(--surf2);border:1px solid var(--bord);border-radius:5px;padding:3px 10px;font-size:11px;display:flex;align-items:center;gap:5px">
+          <span>${w.ad} ${w.soyad}</span>
+          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">(${w.pozisyonlar.length} Pos.)</span>
+        </div>`).join('')
+      : '<span style="font-size:11px;color:var(--muted);font-style:italic">Alle Mitarbeiter verplant</span>';
+  }
+  panel.style.display=open?'block':'none';
 }
 
 let spAktifTip=null;
