@@ -97,8 +97,8 @@ input,select{font-family:var(--sans)}
 .poz-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500}
 .no-atama{color:var(--muted);font-style:italic;font-size:11px}
 .sec-div{background:var(--surf2);padding:7px 12px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-family:var(--mono);border-top:2px solid;border-bottom:1px solid var(--bord)}
-.sec-kk{color:var(--kk);border-top-color:var(--kk)}.sec-acil{color:var(--acil);border-top-color:var(--acil)}
-.row-kk td{background:rgba(56,217,169,.05)}.row-acil-n td{background:rgba(247,168,79,.08)}.row-acil-g td{background:rgba(247,168,79,.03)}
+.sec-kk{color:var(--kk);border-top-color:var(--kk)}.sec-acil{color:var(--acil);border-top-color:var(--acil)}.sec-fazla{color:var(--muted);border-top-color:var(--muted)}
+.row-kk td{background:rgba(56,217,169,.05)}.row-acil-n td{background:rgba(247,168,79,.08)}.row-acil-g td{background:rgba(247,168,79,.03)}.row-fazla td{background:rgba(255,255,255,.01)}
 .badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:600}
 .b-kk{background:rgba(56,217,169,.15);color:var(--kk)}.b-acil{background:rgba(247,168,79,.15);color:var(--acil)}.b-uretim{background:rgba(79,142,247,.1);color:var(--accent)}
 
@@ -627,66 +627,69 @@ function planOlustur(){
   // QRK, Springer, Krank, Urlaub, Urlaubspool hariç — sadece aktif üretim personeli
   const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk'&&i.gorev!=='acil'&&i.gorev!=='izin_kadrosu');
 
-  // Tier: az skill = kritik (önce), çok skill = joker (fallback)
-  const tierOf=w=>w.pozisyonlar.length<=3?1:w.pozisyonlar.length<=15?2:3;
+  // 2 skill'li işçiler için günlük dönüşüm durumu (her yeni gün parite değişir)
+  const LS_ROT='fab_rotation_v1';
+  const heute=heuteDatumStr();
+  let rotState;try{rotState=JSON.parse(localStorage.getItem(LS_ROT)||'{}');}catch{rotState={};}
+  aktifler.filter(w=>w.pozisyonlar&&w.pozisyonlar.length===2).forEach(w=>{
+    if(!rotState[w.id]||rotState[w.id].date!==heute){
+      const prev=rotState[w.id];
+      rotState[w.id]={parity:prev?(prev.parity===0?1:0):0,date:heute};
+    }
+  });
+  localStorage.setItem(LS_ROT,JSON.stringify(rotState));
 
-  function planTur(tur, oncekiPoz){
-    const pozAlindi=new Set();
-    const atamalar={};
-    const atananWorkers=new Set();
-    const workers=aktifler.filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0);
+  // Skill sayısına göre sırala: az skill → önce (kritik), çok skill → son (joker/reserve)
+  const sorted=[...aktifler].filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0)
+    .sort((a,b)=>a.pozisyonlar.length-b.pozisyonlar.length);
 
-    // Position-first: her pozisyonu kaç işçi yapabilir? En az yapabileni olan önce
-    const pozList=ISLER.map(is=>{
-      const yapabilir=workers.filter(w=>w.pozisyonlar.includes(is.id));
-      return {id:is.id, cnt:yapabilir.length};
-    }).filter(p=>p.cnt>0).sort((a,b)=>a.cnt-b.cnt);
-
-    for(const poz of pozList){
-      if(pozAlindi.has(poz.id)) continue;
-      const onceki_=Array.from(Object.entries(oncekiPoz));
-      // Bu pozisyonu yapabilecek, henüz atanmamış işçiler
-      let adaylar=workers.filter(w=>
-        !atananWorkers.has(w.id) &&
-        w.pozisyonlar.includes(poz.id) &&
-        oncekiPoz[w.id]!==poz.id  // ardışık aynı pozisyon yasak
-      );
-      // Fallback: ardışık kural esnetilebilir (tek seçenek kaldıysa)
-      if(!adaylar.length){
-        adaylar=workers.filter(w=>!atananWorkers.has(w.id)&&w.pozisyonlar.includes(poz.id));
+  function runPlan(){
+    const sch={1:{},2:{},3:{},4:{}};
+    const fazla=[];
+    for(const w of sorted){
+      let seq=null;
+      if(w.pozisyonlar.length===2){
+        // Katı dönüşüm: R1=pos[par], R2=pos[1-par], R3=pos[par], R4=pos[1-par]
+        const par=(rotState[w.id]?.parity??0);
+        const s=[w.pozisyonlar[par],w.pozisyonlar[1-par],w.pozisyonlar[par],w.pozisyonlar[1-par]];
+        if(s.every((p,i)=>!sch[i+1][p])) seq=s;
+      } else {
+        // Her runde farklı pozisyon (mümkünse tüm 4 runde benzersiz)
+        const used=new Set();
+        const s=[];
+        let ok=true;
+        for(let r=1;r<=4;r++){
+          // Önce: bu runde boş VE bugün henüz kullanılmamış pozisyon
+          let cands=w.pozisyonlar.filter(p=>!sch[r][p]&&!used.has(p));
+          // Fallback: bu runde boş herhangi bir pozisyon
+          if(!cands.length) cands=w.pozisyonlar.filter(p=>!sch[r][p]);
+          if(!cands.length){ok=false;break;}
+          const pick=cands[Math.floor(Math.random()*cands.length)];
+          s.push(pick);used.add(pick);
+        }
+        if(ok) seq=s;
       }
-      if(!adaylar.length) continue;
-      // Tier 1 önce, eşitde rastgele
-      adaylar.sort((a,b)=>{
-        const td=tierOf(a)-tierOf(b);
-        return td!==0?td:Math.random()-.5;
-      });
-      const chosen=adaylar[0];
-      atamalar[poz.id]=chosen;
-      pozAlindi.add(poz.id);
-      atananWorkers.add(chosen.id);
+      if(seq){for(let r=1;r<=4;r++) sch[r][seq[r-1]]=w;}
+      else fazla.push(w);
     }
-    return atamalar;
+    return{sch,fazla};
   }
 
-  const turlar={};
-  const oncekiPoz={};
-  const MAX_RETRY=3;
-  for(let tur=1;tur<=4;tur++){
-    let bestAta={};
-    for(let retry=0;retry<MAX_RETRY;retry++){
-      const ata=planTur(tur,oncekiPoz);
-      if(Object.keys(ata).length>Object.keys(bestAta).length) bestAta=ata;
-      if(Object.keys(bestAta).length===aktifler.filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0).length) break;
-    }
-    turlar[tur]=bestAta;
-    Object.entries(bestAta).forEach(([poz,w])=>{ oncekiPoz[w.id]=poz; });
+  // 5 deneme yap, en az fazla personel olan sonucu seç
+  let best=null;
+  for(let i=0;i<5;i++){
+    const res=runPlan();
+    if(!best||res.fazla.length<best.fazla.length) best=res;
+    if(best.fazla.length===0) break;
   }
+
+  const turlar={1:best.sch[1],2:best.sch[2],3:best.sch[3],4:best.sch[4]};
+  const fazlaPersonel=best.fazla;
 
   const acilRot={};
   for(let t=1;t<=4;t++)acilRot[t]=aciller[t-1]||null;
 
-  planData={turlar,kkler,aciller,acilRot,aktifler,devre};
+  planData={turlar,kkler,aciller,acilRot,aktifler,devre,fazlaPersonel};
 
   document.getElementById('ozet-grid').innerHTML=`
     <div class="ozet-c"><div class="ozet-n" style="color:var(--accent)">${aktifler.length}</div><div class="ozet-l">Aktive Mitarbeiter</div></div>
@@ -709,7 +712,7 @@ const TUR_LABELS=['1.Runde','2.Runde','3.Runde','4.Runde'];
 
 function renderAllTurs(){
   if(!planData){document.getElementById('tur-content').innerHTML='';return}
-  const {turlar,kkler,aciller,acilRot}=planData;
+  const {turlar,kkler,aciller,acilRot,fazlaPersonel=[]}=planData;
 
   // Alle Zeilen sammeln: normale Positionen + QK + NE
   // Her satır: {label, t1isci, t2isci, t3isci, t4isci, rowType}
@@ -758,6 +761,18 @@ function renderAllTurs(){
     });
   });
 
+  // 4. Fazla Personel (tüm runde yerleştirilemeyen esnek işçiler)
+  if(fazlaPersonel.length){
+    rows.push({separator:true,label:`FAZLA PERSONEL — ${fazlaPersonel.length} Mitarbeiter (Reserve)`,cls:'sec-fazla'});
+    fazlaPersonel.forEach(w=>{
+      rows.push({
+        label:`${w.ad} ${w.soyad} · ${w.pozisyonlar.length} Pos.`,
+        cells:[1,2,3,4].map(()=>({text:'Reserve',cls:'no-atama-td'})),
+        rowType:'fazla'
+      });
+    });
+  }
+
   // Tabloyu oluştur
   let h=`<div class="ptable-wrap" style="overflow-x:auto">
   <table class="ptable" style="width:100%;table-layout:fixed">
@@ -779,7 +794,7 @@ function renderAllTurs(){
       return;
     }
     const rowBg=ri%2===0?'':'background:rgba(255,255,255,.015)';
-    const rowCls=row.rowType==='kk'?'row-kk':row.rowType==='acil'?'row-acil-g':'';
+    const rowCls=row.rowType==='kk'?'row-kk':row.rowType==='acil'?'row-acil-g':row.rowType==='fazla'?'row-fazla':'';
     h+=`<tr class="${rowCls}" style="${rowBg}">
       <td class="poz-lbl" style="font-size:11px;font-weight:500">${row.label}</td>`;
     row.cells.forEach(cell=>{
