@@ -623,35 +623,60 @@ function planOlustur(){
   // QRK, Springer, Krank, Urlaub, Urlaubspool hariç — sadece aktif üretim personeli
   const aktifler=ISCILER.filter(i=>!devre.has(i.id)&&i.gorev!=='kk'&&i.gorev!=='acil'&&i.gorev!=='izin_kadrosu');
 
+  // Tier: az skill = kritik (önce), çok skill = joker (fallback)
+  const tierOf=w=>w.pozisyonlar.length<=3?1:w.pozisyonlar.length<=15?2:3;
+
+  function planTur(tur, oncekiPoz){
+    const pozAlindi=new Set();
+    const atamalar={};
+    const atananWorkers=new Set();
+    const workers=aktifler.filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0);
+
+    // Position-first: her pozisyonu kaç işçi yapabilir? En az yapabileni olan önce
+    const pozList=ISLER.map(is=>{
+      const yapabilir=workers.filter(w=>w.pozisyonlar.includes(is.id));
+      return {id:is.id, cnt:yapabilir.length};
+    }).filter(p=>p.cnt>0).sort((a,b)=>a.cnt-b.cnt);
+
+    for(const poz of pozList){
+      if(pozAlindi.has(poz.id)) continue;
+      const onceki_=Array.from(Object.entries(oncekiPoz));
+      // Bu pozisyonu yapabilecek, henüz atanmamış işçiler
+      let adaylar=workers.filter(w=>
+        !atananWorkers.has(w.id) &&
+        w.pozisyonlar.includes(poz.id) &&
+        oncekiPoz[w.id]!==poz.id  // ardışık aynı pozisyon yasak
+      );
+      // Fallback: ardışık kural esnetilebilir (tek seçenek kaldıysa)
+      if(!adaylar.length){
+        adaylar=workers.filter(w=>!atananWorkers.has(w.id)&&w.pozisyonlar.includes(poz.id));
+      }
+      if(!adaylar.length) continue;
+      // Tier 1 önce, eşitde rastgele
+      adaylar.sort((a,b)=>{
+        const td=tierOf(a)-tierOf(b);
+        return td!==0?td:Math.random()-.5;
+      });
+      const chosen=adaylar[0];
+      atamalar[poz.id]=chosen;
+      pozAlindi.add(poz.id);
+      atananWorkers.add(chosen.id);
+    }
+    return atamalar;
+  }
+
   const turlar={};
   const oncekiPoz={};
+  const MAX_RETRY=3;
   for(let tur=1;tur<=4;tur++){
-    turlar[tur]={};
-    const pozAlindi=new Set();
-    // Sadece pozisyonu tanımlı işçiler
-    const kalan=[...aktifler].filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0);
-    while(kalan.length>0){
-      const scored=kalan.map(w=>{
-        const onceki=oncekiPoz[w.id]??null;
-        // Önce kural: bir önceki runde yaptığından farklı pozisyon
-        let adaylar=w.pozisyonlar.filter(p=>!pozAlindi.has(p)&&p!==onceki);
-        // Tek pozisyonlu işçi veya tüm farklılar doluysa fallback (aynı pozisyon kabul)
-        if(!adaylar.length) adaylar=w.pozisyonlar.filter(p=>!pozAlindi.has(p));
-        return {w,adaylar,count:adaylar.length};
-      });
-      // Yerleştirilebilenleri filtrele (count=0 olanları bu runde atla)
-      const placeable=scored.filter(s=>s.count>0);
-      if(!placeable.length) break;
-      // En az seçeneği olan (en kısıtlı) işçiyi seç — MRV heuristic
-      const minCount=Math.min(...placeable.map(s=>s.count));
-      const kandids=placeable.filter(s=>s.count===minCount);
-      const chosen=kandids[Math.floor(Math.random()*kandids.length)];
-      const secilen=chosen.adaylar[Math.floor(Math.random()*chosen.adaylar.length)];
-      turlar[tur][secilen]=chosen.w;
-      pozAlindi.add(secilen);
-      oncekiPoz[chosen.w.id]=secilen;
-      kalan.splice(kalan.indexOf(chosen.w),1);
+    let bestAta={};
+    for(let retry=0;retry<MAX_RETRY;retry++){
+      const ata=planTur(tur,oncekiPoz);
+      if(Object.keys(ata).length>Object.keys(bestAta).length) bestAta=ata;
+      if(Object.keys(bestAta).length===aktifler.filter(w=>w.pozisyonlar&&w.pozisyonlar.length>0).length) break;
     }
+    turlar[tur]=bestAta;
+    Object.entries(bestAta).forEach(([poz,w])=>{ oncekiPoz[w.id]=poz; });
   }
 
   const acilRot={};
